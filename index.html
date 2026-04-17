@@ -161,8 +161,9 @@ const TRAINS = [
 
 let ST = {
     day: 1, tp: 200, leagueIdx: 0, round: 1, 
-    selectedTeamName: null, players: [], enemy: null, leagueCompletedDay: -1,
-    lastFailedDay: -1 
+    selectedTeamName: null, players: [], enemy: null, 
+    isLeagueCleared: false, // 우승 여부 플래그
+    isFailed: false        // 패배 여부 플래그
 };
 
 function init() {
@@ -194,7 +195,7 @@ function confirmTeam() {
     ST.players = [data.captain, ...data.players].map((n, i) => {
         return { name: n, pos: posSet[i].p, target: posSet[i].s, stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} };
     });
-    ST.enemy = LEAGUES[0].enemies[0];
+    ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
     document.getElementById('selectionArea').style.display = 'none';
     document.getElementById('mainTabs').style.display = 'grid';
     document.getElementById('teamInfoArea').style.display = 'block';
@@ -232,22 +233,22 @@ function render() {
         node.className = 'bracket-node'; if(line) line.className = 'bracket-line';
         if(i < ST.round) { node.classList.add('complete'); if(line) line.classList.add('active'); }
         else if(i === ST.round) node.classList.add('active');
+        if(ST.isLeagueCleared && i === 4) node.classList.add('active');
     }
 
-    const isWin = ST.leagueCompletedDay === ST.day;
-    const isFailedToday = ST.lastFailedDay === ST.day;
     const mBtn = document.getElementById('matchBtn');
     const fMsg = document.getElementById('failMessage');
+    const wMsg = document.getElementById('waitMessage');
+    const mCard = document.getElementById('matchCard');
     
-    if (isWin) {
-        document.getElementById('matchCard').style.display = 'none';
-        document.getElementById('waitMessage').style.display = 'block';
-        document.getElementById('node-4').classList.add('active');
+    if (ST.isLeagueCleared) {
+        mCard.style.display = 'none';
+        wMsg.style.display = 'block';
     } else {
-        document.getElementById('matchCard').style.display = 'block';
-        document.getElementById('waitMessage').style.display = 'none';
-        mBtn.disabled = isFailedToday;
-        fMsg.style.display = isFailedToday ? 'block' : 'none';
+        mCard.style.display = 'block';
+        wMsg.style.display = 'none';
+        mBtn.disabled = ST.isFailed;
+        fMsg.style.display = ST.isFailed ? 'block' : 'none';
     }
 }
 
@@ -280,38 +281,43 @@ function playMatch() {
                 ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1]; 
                 showToast("경기 승리!"); 
             } else { 
-                ST.leagueCompletedDay = ST.day; 
+                ST.isLeagueCleared = true;
                 showToast("🏆 리그 우승!"); 
             }
         } else { 
-            ST.lastFailedDay = ST.day; 
-            showToast("패배! 내일 8강부터 다시 시작합니다."); 
+            ST.isFailed = true; // 패배 상태 기록
+            showToast("패배! 내일 8강부터 다시 도전하세요."); 
         }
         btn.disabled = false; render();
     }, 1000);
 }
 
 function nextDay() {
-    ST.day++; ST.tp += 100;
+    ST.day++; 
+    ST.tp += 100;
 
-    // 패배한 경우 -> 라운드 1(8강)로 리셋
-    if (ST.lastFailedDay !== -1) {
+    // 1. 패배했었다면 라운드를 무조건 1로 초기화
+    if (ST.isFailed) {
         ST.round = 1;
+        ST.isFailed = false; // 패배 상태 해제
         ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-        ST.lastFailedDay = -1; // 초기화 완료
-    }
-
-    // 우승한 경우 -> 다음 리그 라운드 1(8강)로 리셋
-    if (ST.leagueCompletedDay !== -1) {
+        showToast(`DAY ${ST.day} - 대진표가 초기화되었습니다.`);
+    } 
+    // 2. 우승했다면 다음 리그로 진행
+    else if (ST.isLeagueCleared) {
         if (ST.leagueIdx < 3) {
             ST.leagueIdx++;
             ST.round = 1;
+            ST.isLeagueCleared = false;
             ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
+            showToast(`DAY ${ST.day} - 새로운 리그가 시작됩니다!`);
+        } else {
+            showToast("모든 대회를 제패했습니다!");
         }
-        ST.leagueCompletedDay = -1; // 초기화 완료
+    } else {
+        showToast(`DAY ${ST.day} 시작! 100P 지급`);
     }
     
-    showToast(`DAY ${ST.day} 시작! 대진표가 초기화되었습니다.`);
     render();
 }
 
