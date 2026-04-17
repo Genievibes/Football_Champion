@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아크라시아 컵 : 로드 투 챔피언</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #05070a;
+            --card-bg: rgba(15, 20, 30, 0.95);
+            --accent: #d4ad6a;
+            --accent-bright: #f5c842;
+            --text-main: #e8eaf0;
+            --text-dim: #9ca3af;
+            --error: #ff4d4d;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background: var(--bg-dark); color: var(--text-main); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; }
+        #app { max-width: 500px; margin: 0 auto; position: relative; padding-bottom: 40px; }
+
+        .top-util { display: flex; justify-content: space-between; padding: 15px 20px; }
+        .day-badge { background: rgba(212, 173, 106, 0.1); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 12px; }
+        .next-day-btn { background: var(--accent); color: #000; padding: 4px 10px; border-radius: 4px; border: none; font-weight: 800; cursor: pointer; font-size: 12px; }
+
+        .header { text-align: center; padding: 20px 20px 10px; }
+        .event-badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 2px; padding: 4px 14px; border-radius: 4px; margin-bottom: 12px; background: var(--accent); color: #000; }
+        h1 { font-size: 24px; font-weight: 900; color: #fff; text-shadow: 0 0 15px rgba(212, 173, 106, 0.3); }
+
+        .tabs { display: grid; grid-template-columns: repeat(3, 1fr); margin: 15px 16px; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; }
+        .tab-btn { background: transparent; border: none; padding: 12px; color: var(--text-dim); font-weight: 700; font-size: 13px; cursor: pointer; }
+        .tab-btn.active { background: var(--accent); color: #000; border-radius: 8px; }
+
+        .panel { display: none; padding: 0 16px; }
+        .panel.active { display: block; }
+
+        .card { background: var(--card-bg); border: 1px solid rgba(212, 173, 106, 0.2); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+        .card-title { font-size: 13px; font-weight: 800; color: var(--accent); margin-bottom: 15px; text-transform: uppercase; }
+
+        .bracket-container { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; position: relative; }
+        .bracket-step { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; position: relative; }
+        .bracket-node { width: 40px; height: 40px; border-radius: 50%; background: #1a1f26; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; transition: 0.5s; z-index: 2; color: #555; }
+        .bracket-node.active { background: var(--accent); border-color: var(--accent-bright); color: #000; box-shadow: 0 0 15px rgba(212, 173, 106, 0.4); }
+        .bracket-node.complete { background: #2ecc71; border-color: #2ecc71; color: #fff; }
+        .bracket-label { font-size: 10px; font-weight: 700; color: var(--text-dim); }
+        .bracket-line { position: absolute; top: 20px; left: 50%; width: 100%; height: 2px; background: #333; z-index: 1; }
+        .bracket-line.active { background: var(--accent); }
+
+        .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 800; border: none; cursor: pointer; font-size: 15px; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #b89156); color: #000; }
+        .btn:disabled { background: #222; color: #555; cursor: not-allowed; }
+
+        .player-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center; }
+        .p-rank { font-weight: 900; }
+        .rank-SS { color: #ff00ff; } .rank-S { color: #ff8c00; } .rank-A { color: #a335ee; } .rank-B { color: #0070dd; } .rank-C { color: #9d9d9d; }
+
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); opacity: 0; transition: 0.3s; background: rgba(0,0,0,0.9); border: 1px solid var(--accent); padding: 12px 24px; border-radius: 30px; z-index: 1000; color: #fff; pointer-events: none; }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+
+        .status-msg { margin-top: 15px; font-size: 13px; font-weight: 700; text-align: center; }
+        .status-msg.fail { color: var(--error); }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="top-util">
+            <div class="day-badge" id="currentDayLabel">DAY 1</div>
+            <button class="next-day-btn" onclick="nextDay()">다음 날로 넘기기 ➔</button>
+        </div>
+
+        <div class="header">
+            <div class="event-badge">ROAD TO CHAMPION</div>
+            <h1 id="mainTitle">아크라시아 컵 : 로드 투 챔피언</h1>
+        </div>
+
+        <div class="tabs" id="mainTabs" style="display:none;">
+            <button class="tab-btn active" onclick="switchTab('profile', this)">팀 관리</button>
+            <button class="tab-btn" onclick="switchTab('training', this)">훈련</button>
+            <button class="tab-btn" onclick="switchTab('match', this)">대회</button>
+        </div>
+
+        <div class="panel active" id="panel-profile">
+            <div id="selectionArea">
+                <div class="card-title">원정대 팀 선택</div>
+                <div id="teamGrid"></div>
+                <button class="btn btn-primary" id="confirmBtn" onclick="confirmTeam()" style="display:none; margin-top:10px;">팀 계약 체결</button>
+            </div>
+            <div id="teamInfoArea" style="display:none;">
+                <div class="card">
+                    <div class="card-title">🛡️ 선수단 명단</div>
+                    <div id="playerList"></div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div class="card-title">📊 팀 종합 전력</div>
+                    <svg id="radarSvg" width="200" height="200" viewBox="0 0 200 200"></svg>
+                    <div id="totalStatsText" style="font-size:14px; margin-top:10px; color:var(--accent-bright); font-weight:800;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" id="panel-training">
+            <div class="card" style="text-align:center;">
+                <div style="font-size:12px; color:var(--text-dim);">보유 훈련 포인트</div>
+                <div id="tpLabel" style="font-size:28px; font-weight:900; color:var(--accent-bright);">0P</div>
+            </div>
+            <div id="trainMenu"></div>
+        </div>
+
+        <div class="panel" id="panel-match">
+            <div class="card">
+                <div class="card-title" id="currentLeagueName">진행 현황</div>
+                <div class="bracket-container">
+                    <div class="bracket-step"><div class="bracket-node" id="node-1">8</div><div class="bracket-label">8강</div><div class="bracket-line" id="line-1"></div></div>
+                    <div class="bracket-step"><div class="bracket-node" id="node-2">4</div><div class="bracket-label">4강</div><div class="bracket-line" id="line-2"></div></div>
+                    <div class="bracket-step"><div class="bracket-node" id="node-3">2</div><div class="bracket-label">결승</div><div class="bracket-line" id="line-3"></div></div>
+                    <div class="bracket-step"><div class="bracket-node" id="node-4">🏆</div><div class="bracket-label">우승</div></div>
+                </div>
+            </div>
+            <div id="matchCard" class="card">
+                <div style="text-align:center; padding:20px 0;">
+                    <span id="myTeamLabel" style="font-weight:800; font-size:18px;"></span>
+                    <span style="color:var(--accent); font-weight:900; margin:0 15px;">VS</span>
+                    <span id="enemyTeamLabel" style="font-weight:800; font-size:18px;"></span>
+                </div>
+                <div id="winProbLabel" style="text-align:center; font-size:12px; color:var(--text-dim); margin-bottom:20px;"></div>
+                <button class="btn btn-primary" id="matchBtn" onclick="playMatch()">경기 시작</button>
+                <div id="failMessage" class="status-msg fail" style="display:none;">오늘은 더 이상 경기를 치를 수 없습니다.</div>
+            </div>
+            <div id="waitMessage" class="card" style="display:none; text-align:center; padding:40px 10px;">
+                <div style="font-weight:800; color:var(--accent-bright); font-size:18px;">오늘의 대회를 우승으로 마쳤습니다!</div>
+            </div>
+        </div>
+    </div>
+    <div id="toast"></div>
+
+<script>
+const TEAMS_DATA = {
+    "베른 유나이티드": { captain: "에아달린", players: ["라하르트", "아델", "제레온"] },
+    "아르데타인 스틸러스": { captain: "바스티안", players: ["사샤", "카인", "마리 파우렌츠"] },
+    "루테란 FC": { captain: "미한", players: ["하셀링크", "하울로크", "칼스"] },
+    "엘가시아 CF": { captain: "라우리엘", players: ["아자키엘", "티엔", "프리우나"] },
+    "SSC 볼다이크": { captain: "세헤라데", players: ["마레가", "아이작", "마리우"] }
+};
+
+const LEAGUES = [
+    { name: "1차 예선", M: 480, N: 960, enemies: ["레온하트 네리아","슈테른 네리아","칸다리아 네리아"] },
+    { name: "2차 예선", M: 960, N: 1440, enemies: ["판다 푸푸","나루니","코니"] },
+    { name: "3차 예선", M: 1440, N: 1920, enemies: ["발탄","비아키스","카멘"] },
+    { name: "아크라시아 컵", M: 2200, N: 2400, enemies: ["니나브","카단","실리안"] }
+];
+
+// '전문 강사 초청 강의'로 명칭 변경
+const TRAINS = [
+    { id:'t1', name:"기초 체력", cost:20, stats:['체력','속도'] },
+    { id:'t2', name:"전술 훈련", cost:20, stats:['수비','협력'] },
+    { id:'t3', name:"슈팅 훈련", cost:20, stats:['공격','기술'] },
+    { id:'t4', name:"비디오 분석", cost:30, stats:['공격','협력','기술'] },
+    { id:'t5', name:"단체 명상", cost:30, stats:['수비','체력','속도'] },
+    { id:'t6', name:"전문 강사 초청 강의", cost:60, stats:['공격','수비','협력','기술','체력','속도'] }
+];
+
+let ST = {
+    day: 1, tp: 200, leagueIdx: 0, round: 1, 
+    selectedTeamName: null, players: [], enemy: null, leagueCompletedDay: -1,
+    lastFailedDay: -1 // 경기 패배 기록용
+};
+
+function init() {
+    const grid = document.getElementById('teamGrid');
+    grid.innerHTML = Object.keys(TEAMS_DATA).map(name => `
+        <div class="team-item" id="team-${name}" onclick="ST.selectedTeamName='${name}'; renderSelection();" style="padding:15px; border:1px solid #333; margin-bottom:8px; border-radius:12px; cursor:pointer; display:flex; justify-content:space-between;">
+            <b>${name}</b><span style="color:var(--accent); font-size:11px;">주장: ${TEAMS_DATA[name].captain}</span>
+        </div>
+    `).join('');
+    
+    const tMenu = document.getElementById('trainMenu');
+    tMenu.innerHTML = TRAINS.map(t => `
+        <div class="card" onclick="doTrain('${t.id}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div><div style="font-weight:800;">${t.name}</div><div style="font-size:10px; color:var(--text-dim);">${t.stats.join(', ')}</div></div>
+            <div style="color:var(--accent-bright); font-weight:800;">${t.cost}P</div>
+        </div>
+    `).join('');
+}
+
+function renderSelection() {
+    document.querySelectorAll('.team-item').forEach(el => el.style.borderColor = '#333');
+    document.getElementById(`team-${ST.selectedTeamName}`).style.borderColor = 'var(--accent)';
+    document.getElementById('confirmBtn').style.display = 'block';
+}
+
+function confirmTeam() {
+    const data = TEAMS_DATA[ST.selectedTeamName];
+    const posSet = [
+        {p:'FW', s:['공격','속도','기술']},
+        {p:'MF', s:['공격','협력','기술']},
+        {p:'DF', s:['수비','협력','체력']},
+        {p:'GK', s:['수비','체력','속도']}
+    ];
+    ST.players = [data.captain, ...data.players].map((n, i) => {
+        return { name: n, pos: posSet[i].p, target: posSet[i].s, stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} };
+    });
+    ST.enemy = LEAGUES[0].enemies[0];
+    document.getElementById('selectionArea').style.display = 'none';
+    document.getElementById('mainTabs').style.display = 'grid';
+    document.getElementById('teamInfoArea').style.display = 'block';
+    render();
+}
+
+function calculateTotals() {
+    let teamTotals = { '공격':0,'수비':0,'협력':0,'기술':0,'체력':0,'속도':0 };
+    ST.players.forEach(p => {
+        p.target.forEach(sName => { teamTotals[sName] += p.stats[sName]; });
+    });
+    const S = Object.values(teamTotals).reduce((a,b)=>a+b, 0);
+    return { t: teamTotals, S: S };
+}
+
+function render() {
+    if (!ST.players.length) return;
+    const pList = document.getElementById('playerList');
+    pList.innerHTML = ST.players.map(p => {
+        const sum = p.stats['공격'] + p.stats['기술'] + p.stats['속도'];
+        const r = (sum >= 600)?'SS':(sum >= 480)?'S':(sum >= 240)?'A':(sum >= 160)?'B':'C';
+        return `<div class="player-row"><div><b>${p.name}</b> <small style="color:var(--accent)">${p.pos}</small></div><div class="p-rank rank-${r}">${r}</div></div>`;
+    }).join('');
+
+    const { t, S } = calculateTotals();
+    const league = LEAGUES[ST.leagueIdx];
+    const kr = [0, 1, 1.5, 2][ST.round];
+    let prob = (S <= league.M) ? 5 : (S >= league.N) ? 100 : Math.pow((S-league.M)/(league.N-league.M), kr)*100;
+
+    ST.curProb = prob;
+    document.getElementById('currentDayLabel').innerText = `DAY ${ST.day}`;
+    document.getElementById('tpLabel').innerText = `${ST.tp}P`;
+    document.getElementById('totalStatsText').innerText = `현재 팀 전력: ${S} / 2400`;
+    document.getElementById('myTeamLabel').innerText = ST.selectedTeamName;
+    document.getElementById('enemyTeamLabel').innerText = ST.enemy;
+    document.getElementById('winProbLabel').innerText = `예상 승률: ${prob.toFixed(1)}%`;
+
+    drawRadar(t);
+
+    for(let i=1; i<=4; i++){
+        const node = document.getElementById(`node-${i}`);
+        const line = document.getElementById(`line-${i}`);
+        node.className = 'bracket-node'; if(line) line.className = 'bracket-line';
+        if(i < ST.round) { node.classList.add('complete'); if(line) line.classList.add('active'); }
+        else if(i === ST.round) node.classList.add('active');
+    }
+    
+    // 리그 우승 여부
+    const isWin = ST.leagueCompletedDay === ST.day;
+    document.getElementById('waitMessage').style.display = isWin ? 'block' : 'none';
+    
+    // 패배 시 버튼 제어 로직
+    const isFailedToday = ST.lastFailedDay === ST.day;
+    const mBtn = document.getElementById('matchBtn');
+    const fMsg = document.getElementById('failMessage');
+    
+    if (isWin) {
+        document.getElementById('matchCard').style.display = 'none';
+        document.getElementById('node-4').classList.add('active');
+    } else {
+        document.getElementById('matchCard').style.display = 'block';
+        if (isFailedToday) {
+            mBtn.disabled = true;
+            fMsg.style.display = 'block';
+        } else {
+            mBtn.disabled = false;
+            fMsg.style.display = 'none';
+        }
+    }
+}
+
+function drawRadar(totals) {
+    const svg = document.getElementById('radarSvg');
+    const labels = ['공격','수비','협력','기술','체력','속도'];
+    const pts = labels.map((k, i) => {
+        const a = (Math.PI * 2 * i / 6) - (Math.PI / 2);
+        const x = 100 + (70 * totals[k] / 400) * Math.cos(a);
+        const y = 100 + (70 * totals[k] / 400) * Math.sin(a);
+        return `${x},${y}`;
+    }).join(' ');
+    svg.innerHTML = `
+        <circle cx="100" cy="100" r="70" fill="none" stroke="#222" stroke-dasharray="2 2"/>
+        <polygon points="${pts}" fill="rgba(212,173,106,0.3)" stroke="var(--accent)" stroke-width="2"/>
+        ${labels.map((k, i) => {
+            const a = (Math.PI * 2 * i / 6) - (Math.PI / 2);
+            return `<text x="${100 + 85 * Math.cos(a)}" y="${100 + 85 * Math.sin(a)}" fill="#999" font-size="9" text-anchor="middle">${k}</text>`;
+        }).join('')}
+    `;
+}
+
+function doTrain(tid) {
+    const t = TRAINS.find(x => x.id === tid);
+    if (ST.tp < t.cost) return showToast("포인트 부족!");
+    ST.tp -= t.cost;
+    ST.players.forEach(p => {
+        t.stats.forEach(s => { p.stats[s] = Math.min(200, p.stats[s] + 5); });
+    });
+    showToast(`${t.name} 완료`);
+    render();
+}
+
+function playMatch() {
+    const btn = document.getElementById('matchBtn');
+    btn.disabled = true;
+    setTimeout(() => {
+        if (Math.random()*100 <= ST.curProb) {
+            if (ST.round < 3) { 
+                ST.round++; 
+                ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1]; 
+                showToast("경기 승리!"); 
+            }
+            else { 
+                ST.leagueCompletedDay = ST.day; 
+                showToast("🏆 리그 우승!"); 
+            }
+        } else { 
+            ST.lastFailedDay = ST.day; // 패배 기록
+            showToast("경기 패배... 전력을 더 보강하세요."); 
+        }
+        btn.disabled = false; 
+        render();
+    }, 1000);
+}
+
+function nextDay() {
+    ST.day++; 
+    ST.tp += 100;
+    // 리그를 우승한 상태에서 다음날로 넘어가면 다음 리그로 교체
+    if (ST.leagueCompletedDay !== -1 && ST.leagueIdx < 3) {
+        ST.leagueIdx++; 
+        ST.round = 1; 
+        ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
+        ST.leagueCompletedDay = -1; // 상태 초기화
+    }
+    showToast(`DAY ${ST.day} 시작! 100P 지급`);
+    render();
+}
+
+function switchTab(id, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`panel-${id}`).classList.add('active');
+    render();
+}
+
+function showToast(m) {
+    const t = document.getElementById('toast');
+    t.innerText = m; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
