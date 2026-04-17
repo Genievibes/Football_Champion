@@ -129,12 +129,14 @@
             </div>
             <div id="waitMessage" class="card" style="display:none; text-align:center; padding:40px 10px;">
                 <div style="font-weight:800; color:var(--accent-bright); font-size:18px;">오늘의 대회를 우승으로 마쳤습니다!</div>
+                <div style="font-size:13px; color:var(--text-dim); margin-top:10px;">[다음 날로 넘기기] 버튼을 누르면 다음 리그가 열립니다.</div>
             </div>
         </div>
     </div>
     <div id="toast"></div>
 
 <script>
+/** ── 데이터 ── **/
 const TEAMS_DATA = {
     "베른 유나이티드": { captain: "에아달린", players: ["라하르트", "아델", "제레온"] },
     "아르데타인 스틸러스": { captain: "바스티안", players: ["사샤", "카인", "마리 파우렌츠"] },
@@ -150,7 +152,6 @@ const LEAGUES = [
     { name: "아크라시아 컵", M: 2200, N: 2400, enemies: ["니나브","카단","실리안"] }
 ];
 
-// '전문 강사 초청 강의'로 명칭 변경
 const TRAINS = [
     { id:'t1', name:"기초 체력", cost:20, stats:['체력','속도'] },
     { id:'t2', name:"전술 훈련", cost:20, stats:['수비','협력'] },
@@ -163,14 +164,15 @@ const TRAINS = [
 let ST = {
     day: 1, tp: 200, leagueIdx: 0, round: 1, 
     selectedTeamName: null, players: [], enemy: null, leagueCompletedDay: -1,
-    lastFailedDay: -1 // 경기 패배 기록용
+    lastFailedDay: -1 
 };
 
+/** ── 초기화 및 렌더링 ── **/
 function init() {
     const grid = document.getElementById('teamGrid');
     grid.innerHTML = Object.keys(TEAMS_DATA).map(name => `
         <div class="team-item" id="team-${name}" onclick="ST.selectedTeamName='${name}'; renderSelection();" style="padding:15px; border:1px solid #333; margin-bottom:8px; border-radius:12px; cursor:pointer; display:flex; justify-content:space-between;">
-            <b>${name}</b><span style="color:var(--accent); font-size:11px;">주장: ${TEAMS_DATA[name].captain}</span>
+            <b>${name}</b><span style="color:var(--accent); font-size:11px;">${TEAMS_DATA[name].captain}</span>
         </div>
     `).join('');
     
@@ -191,6 +193,7 @@ function renderSelection() {
 
 function confirmTeam() {
     const data = TEAMS_DATA[ST.selectedTeamName];
+    // 포지션별 기여 항목 3개씩 설정
     const posSet = [
         {p:'FW', s:['공격','속도','기술']},
         {p:'MF', s:['공격','협력','기술']},
@@ -207,6 +210,7 @@ function confirmTeam() {
     render();
 }
 
+/** ── 전력 및 승률 로직 ── **/
 function calculateTotals() {
     let teamTotals = { '공격':0,'수비':0,'협력':0,'기술':0,'체력':0,'속도':0 };
     ST.players.forEach(p => {
@@ -218,6 +222,8 @@ function calculateTotals() {
 
 function render() {
     if (!ST.players.length) return;
+
+    // 개인 랭크 및 명단
     const pList = document.getElementById('playerList');
     pList.innerHTML = ST.players.map(p => {
         const sum = p.stats['공격'] + p.stats['기술'] + p.stats['속도'];
@@ -225,6 +231,7 @@ function render() {
         return `<div class="player-row"><div><b>${p.name}</b> <small style="color:var(--accent)">${p.pos}</small></div><div class="p-rank rank-${r}">${r}</div></div>`;
     }).join('');
 
+    // 팀 전력 및 승률
     const { t, S } = calculateTotals();
     const league = LEAGUES[ST.leagueIdx];
     const kr = [0, 1, 1.5, 2][ST.round];
@@ -237,9 +244,11 @@ function render() {
     document.getElementById('myTeamLabel').innerText = ST.selectedTeamName;
     document.getElementById('enemyTeamLabel').innerText = ST.enemy;
     document.getElementById('winProbLabel').innerText = `예상 승률: ${prob.toFixed(1)}%`;
+    document.getElementById('currentLeagueName').innerText = `${league.name} 진행 현황`;
 
     drawRadar(t);
 
+    // 브래킷 UI
     for(let i=1; i<=4; i++){
         const node = document.getElementById(`node-${i}`);
         const line = document.getElementById(`line-${i}`);
@@ -247,21 +256,20 @@ function render() {
         if(i < ST.round) { node.classList.add('complete'); if(line) line.classList.add('active'); }
         else if(i === ST.round) node.classList.add('active');
     }
-    
-    // 리그 우승 여부
+
+    // 경기 버튼 활성화 로직 (패배 시 당일 불가)
     const isWin = ST.leagueCompletedDay === ST.day;
-    document.getElementById('waitMessage').style.display = isWin ? 'block' : 'none';
-    
-    // 패배 시 버튼 제어 로직
     const isFailedToday = ST.lastFailedDay === ST.day;
     const mBtn = document.getElementById('matchBtn');
     const fMsg = document.getElementById('failMessage');
     
     if (isWin) {
         document.getElementById('matchCard').style.display = 'none';
+        document.getElementById('waitMessage').style.display = 'block';
         document.getElementById('node-4').classList.add('active');
     } else {
         document.getElementById('matchCard').style.display = 'block';
+        document.getElementById('waitMessage').style.display = 'none';
         if (isFailedToday) {
             mBtn.disabled = true;
             fMsg.style.display = 'block';
@@ -291,14 +299,15 @@ function drawRadar(totals) {
     `;
 }
 
+/** ── 게임 액션 ── **/
 function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
-    if (ST.tp < t.cost) return showToast("포인트 부족!");
+    if (ST.tp < t.cost) return showToast("훈련 포인트가 부족합니다.");
     ST.tp -= t.cost;
     ST.players.forEach(p => {
         t.stats.forEach(s => { p.stats[s] = Math.min(200, p.stats[s] + 5); });
     });
-    showToast(`${t.name} 완료`);
+    showToast(`${t.name} 완료! 모든 선수 스탯 상승`);
     render();
 }
 
@@ -310,15 +319,15 @@ function playMatch() {
             if (ST.round < 3) { 
                 ST.round++; 
                 ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1]; 
-                showToast("경기 승리!"); 
+                showToast("경기 승리! 다음 라운드 진출"); 
             }
             else { 
                 ST.leagueCompletedDay = ST.day; 
-                showToast("🏆 리그 우승!"); 
+                showToast("🏆 리그 우승! 다음 대회 진출 자격 획득"); 
             }
         } else { 
-            ST.lastFailedDay = ST.day; // 패배 기록
-            showToast("경기 패배... 전력을 더 보강하세요."); 
+            ST.lastFailedDay = ST.day; 
+            showToast("경기 패배... 내일 8강부터 다시 시작합니다."); 
         }
         btn.disabled = false; 
         render();
@@ -328,14 +337,23 @@ function playMatch() {
 function nextDay() {
     ST.day++; 
     ST.tp += 100;
-    // 리그를 우승한 상태에서 다음날로 넘어가면 다음 리그로 교체
+
+    // 패배 시 해당 리그 라운드 초기화 (8강부터)
+    if (ST.lastFailedDay !== -1 && ST.lastFailedDay === ST.day - 1) {
+        ST.round = 1;
+        ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
+        ST.lastFailedDay = -1;
+    }
+
+    // 리그 우승 시 다음 리그로 진행 (진행도 저장)
     if (ST.leagueCompletedDay !== -1 && ST.leagueIdx < 3) {
         ST.leagueIdx++; 
         ST.round = 1; 
         ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-        ST.leagueCompletedDay = -1; // 상태 초기화
+        ST.leagueCompletedDay = -1; 
     }
-    showToast(`DAY ${ST.day} 시작! 100P 지급`);
+    
+    showToast(`DAY ${ST.day} 시작! 100P 지급 및 대진표 재편성`);
     render();
 }
 
