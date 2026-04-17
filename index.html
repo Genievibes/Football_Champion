@@ -129,14 +129,12 @@
             </div>
             <div id="waitMessage" class="card" style="display:none; text-align:center; padding:40px 10px;">
                 <div style="font-weight:800; color:var(--accent-bright); font-size:18px;">오늘의 대회를 우승으로 마쳤습니다!</div>
-                <div style="font-size:13px; color:var(--text-dim); margin-top:10px;">[다음 날로 넘기기] 버튼을 누르면 다음 리그가 열립니다.</div>
             </div>
         </div>
     </div>
     <div id="toast"></div>
 
 <script>
-/** ── 데이터 ── **/
 const TEAMS_DATA = {
     "베른 유나이티드": { captain: "에아달린", players: ["라하르트", "아델", "제레온"] },
     "아르데타인 스틸러스": { captain: "바스티안", players: ["사샤", "카인", "마리 파우렌츠"] },
@@ -167,7 +165,6 @@ let ST = {
     lastFailedDay: -1 
 };
 
-/** ── 초기화 및 렌더링 ── **/
 function init() {
     const grid = document.getElementById('teamGrid');
     grid.innerHTML = Object.keys(TEAMS_DATA).map(name => `
@@ -193,13 +190,7 @@ function renderSelection() {
 
 function confirmTeam() {
     const data = TEAMS_DATA[ST.selectedTeamName];
-    // 포지션별 기여 항목 3개씩 설정
-    const posSet = [
-        {p:'FW', s:['공격','속도','기술']},
-        {p:'MF', s:['공격','협력','기술']},
-        {p:'DF', s:['수비','협력','체력']},
-        {p:'GK', s:['수비','체력','속도']}
-    ];
+    const posSet = [{p:'FW', s:['공격','속도','기술']},{p:'MF', s:['공격','협력','기술']},{p:'DF', s:['수비','협력','체력']},{p:'GK', s:['수비','체력','속도']}];
     ST.players = [data.captain, ...data.players].map((n, i) => {
         return { name: n, pos: posSet[i].p, target: posSet[i].s, stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} };
     });
@@ -210,28 +201,15 @@ function confirmTeam() {
     render();
 }
 
-/** ── 전력 및 승률 로직 ── **/
 function calculateTotals() {
     let teamTotals = { '공격':0,'수비':0,'협력':0,'기술':0,'체력':0,'속도':0 };
-    ST.players.forEach(p => {
-        p.target.forEach(sName => { teamTotals[sName] += p.stats[sName]; });
-    });
+    ST.players.forEach(p => { p.target.forEach(sName => { teamTotals[sName] += p.stats[sName]; }); });
     const S = Object.values(teamTotals).reduce((a,b)=>a+b, 0);
     return { t: teamTotals, S: S };
 }
 
 function render() {
     if (!ST.players.length) return;
-
-    // 개인 랭크 및 명단
-    const pList = document.getElementById('playerList');
-    pList.innerHTML = ST.players.map(p => {
-        const sum = p.stats['공격'] + p.stats['기술'] + p.stats['속도'];
-        const r = (sum >= 600)?'SS':(sum >= 480)?'S':(sum >= 240)?'A':(sum >= 160)?'B':'C';
-        return `<div class="player-row"><div><b>${p.name}</b> <small style="color:var(--accent)">${p.pos}</small></div><div class="p-rank rank-${r}">${r}</div></div>`;
-    }).join('');
-
-    // 팀 전력 및 승률
     const { t, S } = calculateTotals();
     const league = LEAGUES[ST.leagueIdx];
     const kr = [0, 1, 1.5, 2][ST.round];
@@ -248,7 +226,6 @@ function render() {
 
     drawRadar(t);
 
-    // 브래킷 UI
     for(let i=1; i<=4; i++){
         const node = document.getElementById(`node-${i}`);
         const line = document.getElementById(`line-${i}`);
@@ -257,7 +234,6 @@ function render() {
         else if(i === ST.round) node.classList.add('active');
     }
 
-    // 경기 버튼 활성화 로직 (패배 시 당일 불가)
     const isWin = ST.leagueCompletedDay === ST.day;
     const isFailedToday = ST.lastFailedDay === ST.day;
     const mBtn = document.getElementById('matchBtn');
@@ -270,13 +246,8 @@ function render() {
     } else {
         document.getElementById('matchCard').style.display = 'block';
         document.getElementById('waitMessage').style.display = 'none';
-        if (isFailedToday) {
-            mBtn.disabled = true;
-            fMsg.style.display = 'block';
-        } else {
-            mBtn.disabled = false;
-            fMsg.style.display = 'none';
-        }
+        mBtn.disabled = isFailedToday;
+        fMsg.style.display = isFailedToday ? 'block' : 'none';
     }
 }
 
@@ -299,18 +270,6 @@ function drawRadar(totals) {
     `;
 }
 
-/** ── 게임 액션 ── **/
-function doTrain(tid) {
-    const t = TRAINS.find(x => x.id === tid);
-    if (ST.tp < t.cost) return showToast("훈련 포인트가 부족합니다.");
-    ST.tp -= t.cost;
-    ST.players.forEach(p => {
-        t.stats.forEach(s => { p.stats[s] = Math.min(200, p.stats[s] + 5); });
-    });
-    showToast(`${t.name} 완료! 모든 선수 스탯 상승`);
-    render();
-}
-
 function playMatch() {
     const btn = document.getElementById('matchBtn');
     btn.disabled = true;
@@ -319,42 +278,49 @@ function playMatch() {
             if (ST.round < 3) { 
                 ST.round++; 
                 ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1]; 
-                showToast("경기 승리! 다음 라운드 진출"); 
-            }
-            else { 
+                showToast("경기 승리!"); 
+            } else { 
                 ST.leagueCompletedDay = ST.day; 
-                showToast("🏆 리그 우승! 다음 대회 진출 자격 획득"); 
+                showToast("🏆 리그 우승!"); 
             }
         } else { 
             ST.lastFailedDay = ST.day; 
-            showToast("경기 패배... 내일 8강부터 다시 시작합니다."); 
+            showToast("패배! 내일 8강부터 다시 시작합니다."); 
         }
-        btn.disabled = false; 
-        render();
+        btn.disabled = false; render();
     }, 1000);
 }
 
 function nextDay() {
-    ST.day++; 
-    ST.tp += 100;
+    ST.day++; ST.tp += 100;
 
-    // 패배 시 해당 리그 라운드 초기화 (8강부터)
-    if (ST.lastFailedDay !== -1 && ST.lastFailedDay === ST.day - 1) {
+    // 패배한 경우 -> 라운드 1(8강)로 리셋
+    if (ST.lastFailedDay !== -1) {
         ST.round = 1;
         ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-        ST.lastFailedDay = -1;
+        ST.lastFailedDay = -1; // 초기화 완료
     }
 
-    // 리그 우승 시 다음 리그로 진행 (진행도 저장)
-    if (ST.leagueCompletedDay !== -1 && ST.leagueIdx < 3) {
-        ST.leagueIdx++; 
-        ST.round = 1; 
-        ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-        ST.leagueCompletedDay = -1; 
+    // 우승한 경우 -> 다음 리그 라운드 1(8강)로 리셋
+    if (ST.leagueCompletedDay !== -1) {
+        if (ST.leagueIdx < 3) {
+            ST.leagueIdx++;
+            ST.round = 1;
+            ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
+        }
+        ST.leagueCompletedDay = -1; // 초기화 완료
     }
     
-    showToast(`DAY ${ST.day} 시작! 100P 지급 및 대진표 재편성`);
+    showToast(`DAY ${ST.day} 시작! 대진표가 초기화되었습니다.`);
     render();
+}
+
+function doTrain(tid) {
+    const t = TRAINS.find(x => x.id === tid);
+    if (ST.tp < t.cost) return showToast("포인트 부족!");
+    ST.tp -= t.cost;
+    ST.players.forEach(p => { t.stats.forEach(s => { p.stats[s] = Math.min(200, p.stats[s] + 5); }); });
+    showToast(`${t.name} 완료`); render();
 }
 
 function switchTab(id, btn) {
