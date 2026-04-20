@@ -101,7 +101,7 @@
 
         <div class="panel" id="panel-training">
             <div class="card" style="text-align:center;">
-                <div style="font-size:12px; color:var(--text-dim);">보유 훈련 포인트</div>
+                <div style="font-size:12px; color:var(--text-dim);">보유 훈련 포인트 (최대 100P)</div>
                 <div id="tpLabel" style="font-size:28px; font-weight:900; color:var(--accent-bright);">0P</div>
             </div>
             <div id="trainMenu"></div>
@@ -129,6 +129,7 @@
             </div>
             <div id="waitMessage" class="card" style="display:none; text-align:center; padding:40px 10px;">
                 <div style="font-weight:800; color:var(--accent-bright); font-size:18px;">오늘의 대회를 우승으로 마쳤습니다!</div>
+                <div style="font-size:13px; color:var(--text-dim); margin-top:10px;">[다음 날로 넘기기] 버튼을 누르면 다음 리그가 열립니다.</div>
             </div>
         </div>
     </div>
@@ -160,10 +161,10 @@ const TRAINS = [
 ];
 
 let ST = {
-    day: 1, tp: 200, leagueIdx: 0, round: 1, 
+    day: 1, tp: 100, leagueIdx: 0, round: 1, 
     selectedTeamName: null, players: [], enemy: null, 
-    isLeagueCleared: false, // 우승 여부 플래그
-    isFailed: false        // 패배 여부 플래그
+    isLeagueCleared: false, 
+    isFailed: false        
 };
 
 function init() {
@@ -285,8 +286,8 @@ function playMatch() {
                 showToast("🏆 리그 우승!"); 
             }
         } else { 
-            ST.isFailed = true; // 패배 상태 기록
-            showToast("패배! 내일 8강부터 다시 도전하세요."); 
+            ST.isFailed = true; 
+            showToast("패배! 내일 8강부터 다시 시작합니다."); 
         }
         btn.disabled = false; render();
     }, 1000);
@@ -294,25 +295,27 @@ function playMatch() {
 
 function nextDay() {
     ST.day++; 
-    ST.tp += 100;
+    
+    // 포인트 지급 로직: 현재 포인트와 관계없이 다음날 최대 보유량은 100P로 고정
+    ST.tp = Math.min(100, ST.tp + 100);
 
-    // 1. 패배했었다면 라운드를 무조건 1로 초기화
+    // 1. 패배 시 라운드 초기화 (8강부터 재도전)
     if (ST.isFailed) {
         ST.round = 1;
-        ST.isFailed = false; // 패배 상태 해제
+        ST.isFailed = false; 
         ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-        showToast(`DAY ${ST.day} - 대진표가 초기화되었습니다.`);
+        showToast(`DAY ${ST.day} 시작! 8강부터 다시 도전하세요.`);
     } 
-    // 2. 우승했다면 다음 리그로 진행
+    // 2. 리그 우승 시 다음 리그로 진행 (라운드는 1로 초기화)
     else if (ST.isLeagueCleared) {
         if (ST.leagueIdx < 3) {
             ST.leagueIdx++;
             ST.round = 1;
             ST.isLeagueCleared = false;
             ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-            showToast(`DAY ${ST.day} - 새로운 리그가 시작됩니다!`);
+            showToast(`DAY ${ST.day} 시작! 새로운 리그 진출.`);
         } else {
-            showToast("모든 대회를 제패했습니다!");
+            showToast("모든 대회를 정복했습니다!");
         }
     } else {
         showToast(`DAY ${ST.day} 시작! 100P 지급`);
