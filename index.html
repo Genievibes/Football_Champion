@@ -21,9 +21,11 @@
         body { background: var(--bg-dark); color: var(--text-main); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; overflow-x: hidden; }
         #app { max-width: 500px; margin: 0 auto; position: relative; padding-bottom: 40px; }
 
-        /* 상단 유틸리티 */
-        .top-util { display: flex; justify-content: space-between; padding: 15px 20px; align-items: center; }
+        /* 상단 바 업데이트: 일자 및 주차 표시 */
+        .top-util { display: flex; justify-content: space-between; padding: 15px 20px; align-items: center; gap: 10px; }
+        .status-badges { display: flex; gap: 8px; }
         .day-badge { background: rgba(212, 173, 106, 0.1); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 13px; }
+        .week-badge { background: rgba(245, 200, 66, 0.15); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--accent-bright); color: var(--accent-bright); font-weight: 800; font-size: 13px; }
         .next-day-btn { background: var(--accent); color: #000; padding: 6px 14px; border-radius: 6px; border: none; font-weight: 800; cursor: pointer; font-size: 13px; }
 
         .header { text-align: center; padding: 20px 20px 10px; }
@@ -46,7 +48,6 @@
         .btn-primary { background: linear-gradient(135deg, var(--accent), #b89156); color: #000; }
         .btn:disabled { background: #222 !important; color: #555 !important; cursor: not-allowed; }
 
-        /* 대진표 UI */
         .bracket-wrapper { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 25px 0 10px; margin-bottom: 5px; }
         .bracket-step { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
         .bracket-node { width: 40px; height: 40px; border-radius: 50%; background: #1a1f26; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; color: #555; }
@@ -57,7 +58,6 @@
         .bracket-connector { position: absolute; top: 45px; left: 12.5%; width: 75%; height: 2px; background: #222; z-index: 1; }
         .connector-progress { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--win); transition: 0.6s ease; }
 
-        /* 오버레이 */
         #matchOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); display: none; flex-direction: column;
@@ -89,7 +89,10 @@
 
     <div id="app">
         <div class="top-util">
-            <div class="day-badge" id="currentDayLabel">1일차</div>
+            <div class="status-badges">
+                <div class="day-badge" id="currentDayLabel">1일차</div>
+                <div class="week-badge" id="currentWeekLabel">1주차 진행 중</div>
+            </div>
             <button class="next-day-btn" onclick="nextDay()">다음 날로 ➔</button>
         </div>
 
@@ -221,15 +224,22 @@ function render() {
     if (!ST.players.length) return;
     const { t, S } = calculateTotals();
     const league = LEAGUES[ST.leagueIdx];
+    
+    // 일자 및 주차 계산 (7일 단위, 최대 10주)
+    const currentWeek = Math.min(10, Math.floor((ST.day - 1) / 7) + 1);
     document.getElementById('currentDayLabel').innerText = `${ST.day}일차`;
+    document.getElementById('currentWeekLabel').innerText = `${currentWeek}주차 진행 중`;
+    
     document.getElementById('tpLabel').innerText = ST.tp;
     document.getElementById('totalStatsTextProfile').innerText = `팀 종합 스탯 ${S}`;
     document.getElementById('totalStatsTextTrain').innerText = `현재 종합 스탯 ${S}`;
     document.getElementById('myTeamLabel').innerText = ST.selectedTeamName;
     document.getElementById('enemyTeamLabel').innerText = ST.enemy;
     document.getElementById('currentLeagueName').innerText = league.name;
+    
     drawRadar('radarSvgProfile', t);
     drawRadar('radarSvgTrain', t);
+    
     const progress = document.getElementById('connectorProgress');
     let progressVal = 0;
     for(let i=1; i<=4; i++){
@@ -241,10 +251,12 @@ function render() {
         if(ST.isLeagueCleared && i === 4) { node.classList.add('complete'); progressVal = 100; }
     }
     progress.style.width = `${progressVal}%`;
+    
     const mCard = document.getElementById('matchCard');
     const wMsg = document.getElementById('waitMessage');
     if (ST.isLeagueCleared) { mCard.style.display = 'none'; wMsg.style.display = 'block'; }
     else { mCard.style.display = 'block'; wMsg.style.display = 'none'; document.getElementById('matchBtn').disabled = ST.isFailed; document.getElementById('failMessage').style.display = ST.isFailed ? 'block' : 'none'; }
+    
     const kr = [0, 1, 1.5, 2][ST.round];
     ST.curProb = (S <= league.M) ? 5 : (S >= league.N) ? 100 : Math.pow((S-league.M)/(league.N-league.M), kr)*100;
 }
@@ -283,13 +295,19 @@ function openOverlay(title, sub, isWin) {
 function closeOverlay() { document.getElementById('matchOverlay').classList.remove('show'); }
 
 function nextDay() {
+    // 70일(10주) 제한 설정 (선택 사항)
+    if (ST.day >= 70) {
+        showToast("이벤트 기간이 종료되었습니다.");
+        return;
+    }
+
     ST.isFailed = false; 
     if (ST.isLeagueCleared) {
         if (ST.leagueIdx < 3) { ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; showToast(`${LEAGUES[ST.leagueIdx].name} 진출!`); }
         else { showToast("아크라시아 컵 정복 완료!"); }
     } else { ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; showToast("새 아침이 밝았습니다. 100P 획득!"); }
+    
     ST.day++; 
-    // 누적치 무한대로 변경
     ST.tp += 100; 
     render();
 }
