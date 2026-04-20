@@ -118,13 +118,12 @@
                 </div>
             </div>
             <div id="matchCard" class="card">
-                <div style="text-align:center; padding:20px 0;">
+                <div style="text-align:center; padding:20px 10px;">
                     <span id="myTeamLabel" style="font-weight:800; font-size:18px;"></span>
                     <span style="color:var(--accent); font-weight:900; margin:0 15px;">VS</span>
                     <span id="enemyTeamLabel" style="font-weight:800; font-size:18px;"></span>
                 </div>
-                <div id="winProbLabel" style="text-align:center; font-size:12px; color:var(--text-dim); margin-bottom:20px;"></div>
-                <button class="btn btn-primary" id="matchBtn" onclick="playMatch()">경기 시작</button>
+                <button class="btn btn-primary" id="matchBtn" onclick="playMatch()" style="margin-top:10px;">경기 시작</button>
                 <div id="failMessage" class="status-msg fail" style="display:none;">오늘은 더 이상 경기를 치를 수 없습니다.</div>
             </div>
             <div id="waitMessage" class="card" style="display:none; text-align:center; padding:40px 10px;">
@@ -164,7 +163,8 @@ let ST = {
     day: 1, tp: 100, leagueIdx: 0, round: 1, 
     selectedTeamName: null, players: [], enemy: null, 
     isLeagueCleared: false, 
-    isFailed: false        
+    isFailed: false,
+    curProb: 0 // 내부 연산용
 };
 
 function init() {
@@ -215,15 +215,15 @@ function render() {
     const { t, S } = calculateTotals();
     const league = LEAGUES[ST.leagueIdx];
     const kr = [0, 1, 1.5, 2][ST.round];
-    let prob = (S <= league.M) ? 5 : (S >= league.N) ? 100 : Math.pow((S-league.M)/(league.N-league.M), kr)*100;
+    
+    // 승률 계산 (표기만 안 함)
+    ST.curProb = (S <= league.M) ? 5 : (S >= league.N) ? 100 : Math.pow((S-league.M)/(league.N-league.M), kr)*100;
 
-    ST.curProb = prob;
     document.getElementById('currentDayLabel').innerText = `DAY ${ST.day}`;
     document.getElementById('tpLabel').innerText = `${ST.tp}P`;
     document.getElementById('totalStatsText').innerText = `현재 팀 전력: ${S} / 2400`;
     document.getElementById('myTeamLabel').innerText = ST.selectedTeamName;
     document.getElementById('enemyTeamLabel').innerText = ST.enemy;
-    document.getElementById('winProbLabel').innerText = `예상 승률: ${prob.toFixed(1)}%`;
     document.getElementById('currentLeagueName').innerText = `${league.name} 진행 현황`;
 
     drawRadar(t);
@@ -296,24 +296,24 @@ function playMatch() {
 function nextDay() {
     ST.day++; 
     
-    // 포인트 지급 로직: 현재 포인트와 관계없이 다음날 최대 보유량은 100P로 고정
+    // 포인트 제한: 최대 100P
     ST.tp = Math.min(100, ST.tp + 100);
 
-    // 1. 패배 시 라운드 초기화 (8강부터 재도전)
+    // 패배 시 라운드 초기화 (8강 재시작)
     if (ST.isFailed) {
         ST.round = 1;
         ST.isFailed = false; 
         ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-        showToast(`DAY ${ST.day} 시작! 8강부터 다시 도전하세요.`);
+        showToast(`DAY ${ST.day} - 8강부터 재시작합니다.`);
     } 
-    // 2. 리그 우승 시 다음 리그로 진행 (라운드는 1로 초기화)
+    // 우승 시 다음 리그로
     else if (ST.isLeagueCleared) {
         if (ST.leagueIdx < 3) {
             ST.leagueIdx++;
             ST.round = 1;
             ST.isLeagueCleared = false;
             ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-            showToast(`DAY ${ST.day} 시작! 새로운 리그 진출.`);
+            showToast(`DAY ${ST.day} - 새로운 리그 진출!`);
         } else {
             showToast("모든 대회를 정복했습니다!");
         }
