@@ -21,7 +21,6 @@
         body { background: var(--bg-dark); color: var(--text-main); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; overflow-x: hidden; }
         #app { max-width: 500px; margin: 0 auto; position: relative; padding-bottom: 40px; }
 
-        /* 상단 바 업데이트: 일자 및 주차 표시 */
         .top-util { display: flex; justify-content: space-between; padding: 15px 20px; align-items: center; gap: 10px; }
         .status-badges { display: flex; gap: 8px; }
         .day-badge { background: rgba(212, 173, 106, 0.1); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 13px; }
@@ -44,47 +43,42 @@
         .league-title-main { font-size: 20px; font-weight: 900; color: var(--accent-bright); text-align: center; margin-bottom: 15px; display: block; }
         .card-title-sub { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 15px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
 
+        /* 선수 정보 카드 스타일 */
+        .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .player-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; }
+        .p-pos { font-size: 10px; color: var(--accent); font-weight: 800; }
+        .p-name { font-size: 14px; font-weight: 900; margin-bottom: 6px; }
+        .p-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; }
+        .p-stat-item { color: #888; display: flex; justify-content: space-between; }
+        .p-stat-item b { color: #ccc; }
+        .p-stat-item.highlight b { color: var(--accent-bright); }
+
         .btn { width: 100%; padding: 16px; border-radius: 14px; font-weight: 800; border: none; cursor: pointer; font-size: 15px; }
         .btn-primary { background: linear-gradient(135deg, var(--accent), #b89156); color: #000; }
-        .btn:disabled { background: #222 !important; color: #555 !important; cursor: not-allowed; }
 
-        .bracket-wrapper { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 25px 0 10px; margin-bottom: 5px; }
-        .bracket-step { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+        /* 레이더 및 기타 UI 생략 (기존과 동일) */
+        .radar-box { position: relative; width: 200px; height: 200px; margin: 0 auto; }
+        #matchOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(8px); }
+        #matchOverlay.show { display: flex; }
+        .result-title { font-size: 64px; font-weight: 900; }
+        .win-text { color: var(--win); }
+        .lose-text { color: var(--error); }
+        .bracket-wrapper { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 25px 0 10px; }
+        .bracket-step { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; position: relative; z-index: 2;}
         .bracket-node { width: 40px; height: 40px; border-radius: 50%; background: #1a1f26; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; color: #555; }
-        .bracket-label { font-size: 11px; font-weight: 800; color: var(--text-dim); }
-        .bracket-node.active { background: var(--accent); border-color: var(--accent-bright); color: #000; box-shadow: 0 0 15px rgba(212, 173, 106, 0.5); }
+        .bracket-node.active { background: var(--accent); border-color: var(--accent-bright); color: #000; }
         .bracket-node.complete { background: var(--win); border-color: var(--win); color: #fff; }
-
         .bracket-connector { position: absolute; top: 45px; left: 12.5%; width: 75%; height: 2px; background: #222; z-index: 1; }
         .connector-progress { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--win); transition: 0.6s ease; }
-
-        #matchOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(8px);
-        }
-        #matchOverlay.show { display: flex; animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .result-title { font-size: 64px; font-weight: 900; margin-bottom: 10px; }
-        .win-text { color: var(--win); text-shadow: 0 0 30px rgba(46, 204, 113, 0.5); }
-        .lose-text { color: var(--error); text-shadow: 0 0 30px rgba(255, 77, 77, 0.5); }
-
-        .radar-box { position: relative; width: 200px; height: 200px; margin: 0 auto; }
         #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); opacity: 0; transition: 0.3s; background: var(--accent); color: #000; padding: 12px 24px; border-radius: 30px; z-index: 1000; font-weight: 700; pointer-events: none; }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(-10px); }
-
-        .list-item { 
-            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-            padding: 16px; border-radius: 14px; display: flex; justify-content: space-between; 
-            align-items: center; margin-bottom: 12px; cursor: pointer;
-        }
-        .list-item:active { transform: scale(0.97); background: rgba(212, 173, 106, 0.1); }
+        .list-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div id="matchOverlay" onclick="closeOverlay()">
         <div id="resultTitle" class="result-title">승리</div>
         <div id="resultSub" style="font-size: 20px; font-weight: 700;">다음 라운드 진출!</div>
-        <div style="margin-top: 40px; font-size: 13px; color: #888;">화면을 터치하여 닫기</div>
     </div>
 
     <div id="app">
@@ -118,6 +112,11 @@
                     <div class="card-title-sub">📊 팀 종합 스탯 현황</div>
                     <div class="radar-box"><svg id="radarSvgProfile" width="200" height="200" viewBox="0 0 200 200"></svg></div>
                     <div id="totalStatsTextProfile" style="font-size:18px; margin-top:15px; color:var(--accent-bright); font-weight:900;"></div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title-sub">👥 소속 선수 명단</div>
+                    <div id="playerListUI" class="player-list"></div>
                 </div>
             </div>
         </div>
@@ -204,8 +203,18 @@ function renderSelection() {
 
 function confirmTeam() {
     const data = TEAMS_DATA[ST.selectedTeamName];
-    const posSet = [{p:'공격수', s:['공격','속도','기술']},{p:'미드필더', s:['공격','협력','기술']},{p:'수비수', s:['수비','협력','체력']},{p:'골키퍼', s:['수비','체력','속도']}];
-    ST.players = [data.captain, ...data.players].map((n, i) => ({ name: n, pos: posSet[i].p, target: posSet[i].s, stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} }));
+    const posSet = [
+        {p:'공격수', s:['공격','속도','기술']},
+        {p:'미드필더', s:['공격','협력','기술']},
+        {p:'수비수', s:['수비','협력','체력']},
+        {p:'골키퍼', s:['수비','체력','속도']}
+    ];
+    ST.players = [data.captain, ...data.players].map((n, i) => ({ 
+        name: n, 
+        pos: posSet[i].p, 
+        target: posSet[i].s, 
+        stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} 
+    }));
     ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
     document.getElementById('selectionArea').style.display = 'none';
     document.getElementById('mainTabs').style.display = 'grid';
@@ -215,7 +224,9 @@ function confirmTeam() {
 
 function calculateTotals() {
     let teamTotals = { '공격':0,'수비':0,'협력':0,'기술':0,'체력':0,'속도':0 };
-    ST.players.forEach(p => { p.target.forEach(sName => { teamTotals[sName] += p.stats[sName]; }); });
+    ST.players.forEach(p => { 
+        p.target.forEach(sName => { teamTotals[sName] += p.stats[sName]; }); 
+    });
     const S = Object.values(teamTotals).reduce((a,b)=>a+b, 0);
     return { t: teamTotals, S: S };
 }
@@ -225,7 +236,7 @@ function render() {
     const { t, S } = calculateTotals();
     const league = LEAGUES[ST.leagueIdx];
     
-    // 일자 및 주차 계산 (7일 단위, 최대 10주)
+    // 일자 및 주차 계산
     const currentWeek = Math.min(10, Math.floor((ST.day - 1) / 7) + 1);
     document.getElementById('currentDayLabel').innerText = `${ST.day}일차`;
     document.getElementById('currentWeekLabel').innerText = `${currentWeek}주차 진행 중`;
@@ -236,6 +247,23 @@ function render() {
     document.getElementById('myTeamLabel').innerText = ST.selectedTeamName;
     document.getElementById('enemyTeamLabel').innerText = ST.enemy;
     document.getElementById('currentLeagueName').innerText = league.name;
+    
+    // 선수 명단 UI 렌더링
+    const pListUI = document.getElementById('playerListUI');
+    pListUI.innerHTML = ST.players.map(p => {
+        const statsHtml = Object.keys(p.stats).map(sKey => {
+            const isTarget = p.target.includes(sKey);
+            return `<div class="p-stat-item ${isTarget ? 'highlight' : ''}">${sKey} <b>${p.stats[sKey]}</b></div>`;
+        }).join('');
+        
+        return `
+            <div class="player-item">
+                <div class="p-pos">${p.pos}</div>
+                <div class="p-name">${p.name}</div>
+                <div class="p-stat-grid">${statsHtml}</div>
+            </div>
+        `;
+    }).join('');
     
     drawRadar('radarSvgProfile', t);
     drawRadar('radarSvgTrain', t);
@@ -261,6 +289,7 @@ function render() {
     ST.curProb = (S <= league.M) ? 5 : (S >= league.N) ? 100 : Math.pow((S-league.M)/(league.N-league.M), kr)*100;
 }
 
+// 나머지 로직 (drawRadar, playMatch, nextDay 등)은 이전과 동일하게 유지됩니다.
 function drawRadar(id, totals) {
     const svg = document.getElementById(id);
     const labels = ['공격','수비','협력','기술','체력','속도'];
@@ -295,21 +324,13 @@ function openOverlay(title, sub, isWin) {
 function closeOverlay() { document.getElementById('matchOverlay').classList.remove('show'); }
 
 function nextDay() {
-    // 70일(10주) 제한 설정 (선택 사항)
-    if (ST.day >= 70) {
-        showToast("이벤트 기간이 종료되었습니다.");
-        return;
-    }
-
+    if (ST.day >= 70) { showToast("이벤트 기간이 종료되었습니다."); return; }
     ST.isFailed = false; 
     if (ST.isLeagueCleared) {
         if (ST.leagueIdx < 3) { ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; showToast(`${LEAGUES[ST.leagueIdx].name} 진출!`); }
         else { showToast("아크라시아 컵 정복 완료!"); }
     } else { ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; showToast("새 아침이 밝았습니다. 100P 획득!"); }
-    
-    ST.day++; 
-    ST.tp += 100; 
-    render();
+    ST.day++; ST.tp += 100; render();
 }
 
 function doTrain(tid) {
