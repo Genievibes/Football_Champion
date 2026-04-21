@@ -44,13 +44,13 @@
         .league-title-main { font-size: 20px; font-weight: 900; color: var(--accent-bright); text-align: center; margin-bottom: 15px; display: block; }
         .card-title-sub { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 15px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
 
-        /* 훈련 스탯 정보 바 */
+        /* 훈련 정보 바 */
         .train-status-bar { display: flex; justify-content: center; gap: 15px; margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 12px; }
         .status-item { text-align: center; }
         .status-label { font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 2px; }
         .status-value { font-size: 16px; font-weight: 900; color: var(--accent); }
 
-        /* 선수 카드 */
+        /* 선수 리스트 */
         .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .player-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; }
         .p-pos { font-size: 10px; color: var(--accent); font-weight: 800; }
@@ -59,7 +59,6 @@
         .p-stat-item { display: flex; justify-content: space-between; color: var(--accent-bright); }
         .p-stat-item.max { color: var(--error); font-weight: 800; }
 
-        /* 공통 버튼 */
         .btn { width: 100%; padding: 16px; border-radius: 14px; font-weight: 800; border: none; cursor: pointer; font-size: 15px; transition: 0.2s; }
         .btn-primary { background: linear-gradient(135deg, var(--accent), #b89156); color: #000; }
         .btn:disabled { background: #222 !important; color: #555 !important; cursor: not-allowed; }
@@ -67,8 +66,10 @@
         /* 연출 오버레이 */
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(10px); cursor: pointer; }
         .overlay.show { display: flex; }
-        .res-title { font-size: 56px; font-weight: 900; margin-bottom: 10px; text-align: center; }
+        .res-title { font-size: 48px; font-weight: 900; margin-bottom: 10px; text-align: center; }
         .res-sub { font-size: 18px; font-weight: 700; color: var(--text-dim); text-align: center; max-width: 80%; line-height: 1.5; }
+        .win-text { color: var(--win); }
+        .lose-text { color: var(--error); }
         .great-text { color: var(--accent-bright); text-shadow: 0 0 30px rgba(245, 200, 66, 0.8); animation: pulse 0.6s infinite alternate; }
         @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
 
@@ -132,7 +133,6 @@
             <div class="card" style="text-align:center;">
                 <div class="card-title-sub">성장 그래프</div>
                 <div class="radar-box"><svg id="radarSvgTrain" width="200" height="200" viewBox="0 0 200 200"></svg></div>
-                
                 <div class="train-status-bar">
                     <div class="status-item">
                         <span class="status-label">보유 포인트</span>
@@ -166,7 +166,7 @@
                     <div id="enemyTeamLabel" style="font-weight:900; font-size:22px; color:var(--error);">상대팀</div>
                 </div>
                 <button class="btn btn-primary" id="matchBtn" onclick="playMatch()">경기 시작</button>
-                <div id="failMsg" style="display:none; margin-top:12px; color:var(--error); font-size:13px; text-align:center; font-weight:700;">패배했습니다. 전력을 보강하여 내일 다시 도전하세요!</div>
+                <div id="failMsg" style="display:none; margin-top:12px; color:var(--error); font-size:13px; text-align:center; font-weight:700;">패배했습니다. 내일 다시 도전하세요!</div>
             </div>
             <div id="clearMsg" class="card" style="display:none; text-align:center; padding:30px 10px;">
                 <div style="font-weight:900; color:var(--win); font-size:22px;">LEAGUE CLEARED!</div>
@@ -294,16 +294,32 @@ function showOverlay(title, sub, type) {
 function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
     if (ST.tp < t.cost) return alert("훈련 포인트가 부족합니다!");
+    
     let targetable = false;
     ST.players.forEach(p => { t.stats.forEach(s => { if(p.stats[s] < MAX_STAT) targetable = true; }); });
-    if (!targetable) return alert("이미 모든 스탯이 최대치입니다.");
+    if (!targetable) return alert("선택한 훈련 항목의 능력치가 이미 모두 최대치입니다.");
 
     const isGreat = Math.random() < 0.05;
     const inc = isGreat ? 10 : 5;
-    ST.players.forEach(p => { t.stats.forEach(s => { p.stats[s] = Math.min(MAX_STAT, p.stats[s] + inc); }); });
+
+    // 수정: 모든 훈련 스탯이 각각 독립적으로 상승
+    ST.players.forEach(p => {
+        t.stats.forEach(sName => {
+            if (p.stats[sName] < MAX_STAT) {
+                p.stats[sName] = Math.min(MAX_STAT, p.stats[sName] + inc);
+            }
+        });
+    });
+
     ST.tp -= t.cost;
     render();
-    showOverlay(isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", isGreat ? "모든 관련 능력치가 +10 상승했습니다!" : "훈련을 무사히 마쳐 능력치가 +5 상승했습니다.", isGreat ? 'great' : 'win');
+
+    const statText = t.stats.join(', ');
+    showOverlay(
+        isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", 
+        isGreat ? `훈련 효율 폭발! [${statText}]이(가) 각각 +10 상승했습니다.` : `무사히 훈련을 마쳤습니다. [${statText}]이(가) 각각 +5 상승했습니다.`, 
+        isGreat ? 'great' : 'win'
+    );
 }
 
 function playMatch() {
@@ -316,11 +332,11 @@ function playMatch() {
                 showOverlay("MATCH WIN", "승리하여 다음 라운드에 진출했습니다!", "win");
             } else {
                 ST.isLeagueCleared = true;
-                showOverlay("🏆 CHAMPION 🏆", `${LEAGUES[ST.leagueIdx].name} 우승을 차지했습니다!`, "great");
+                showOverlay("🏆 CHAMPION 🏆", `${LEAGUES[ST.leagueIdx].name} 정상에 등극했습니다!`, "great");
             }
         } else {
             ST.isFailed = true;
-            showOverlay("MATCH LOSS", "패배했습니다. 전력을 보강하여 재도전하세요.", "lose");
+            showOverlay("MATCH LOSS", "아쉽게 패배했습니다. 전력을 보강하세요.", "lose");
         }
         render();
     }, 600);
