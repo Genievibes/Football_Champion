@@ -43,7 +43,6 @@
         .league-title-main { font-size: 20px; font-weight: 900; color: var(--accent-bright); text-align: center; margin-bottom: 15px; display: block; }
         .card-title-sub { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 15px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
 
-        /* 선수 정보 카드 스타일 */
         .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .player-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; }
         .p-pos { font-size: 10px; color: var(--accent); font-weight: 800; }
@@ -52,17 +51,12 @@
         .p-stat-item { color: #888; display: flex; justify-content: space-between; }
         .p-stat-item b { color: #ccc; }
         .p-stat-item.highlight b { color: var(--accent-bright); }
+        .p-stat-item.max b { color: var(--error); }
 
         .btn { width: 100%; padding: 16px; border-radius: 14px; font-weight: 800; border: none; cursor: pointer; font-size: 15px; }
         .btn-primary { background: linear-gradient(135deg, var(--accent), #b89156); color: #000; }
 
-        /* 레이더 및 기타 UI 생략 (기존과 동일) */
         .radar-box { position: relative; width: 200px; height: 200px; margin: 0 auto; }
-        #matchOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(8px); }
-        #matchOverlay.show { display: flex; }
-        .result-title { font-size: 64px; font-weight: 900; }
-        .win-text { color: var(--win); }
-        .lose-text { color: var(--error); }
         .bracket-wrapper { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 25px 0 10px; }
         .bracket-step { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; position: relative; z-index: 2;}
         .bracket-node { width: 40px; height: 40px; border-radius: 50%; background: #1a1f26; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; color: #555; }
@@ -70,9 +64,16 @@
         .bracket-node.complete { background: var(--win); border-color: var(--win); color: #fff; }
         .bracket-connector { position: absolute; top: 45px; left: 12.5%; width: 75%; height: 2px; background: #222; z-index: 1; }
         .connector-progress { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: var(--win); transition: 0.6s ease; }
-        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); opacity: 0; transition: 0.3s; background: var(--accent); color: #000; padding: 12px 24px; border-radius: 30px; z-index: 1000; font-weight: 700; pointer-events: none; }
+        
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); opacity: 0; transition: 0.3s; background: var(--accent); color: #000; padding: 12px 24px; border-radius: 30px; z-index: 1000; font-weight: 700; pointer-events: none; text-align: center; min-width: 200px; }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(-10px); }
         .list-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer; }
+
+        #matchOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(8px); }
+        #matchOverlay.show { display: flex; }
+        .result-title { font-size: 64px; font-weight: 900; }
+        .win-text { color: var(--win); }
+        .lose-text { color: var(--error); }
     </style>
 </head>
 <body>
@@ -113,7 +114,6 @@
                     <div class="radar-box"><svg id="radarSvgProfile" width="200" height="200" viewBox="0 0 200 200"></svg></div>
                     <div id="totalStatsTextProfile" style="font-size:18px; margin-top:15px; color:var(--accent-bright); font-weight:900;"></div>
                 </div>
-                
                 <div class="card">
                     <div class="card-title-sub">👥 소속 선수 명단</div>
                     <div id="playerListUI" class="player-list"></div>
@@ -161,6 +161,7 @@
     <div id="toast"></div>
 
 <script>
+const MAX_STAT = 400;
 const TEAMS_DATA = {
     "베른 유나이티드": { captain: "에아달린", players: ["라하르트", "아델", "제레온"] },
     "아르데타인 스틸러스": { captain: "바스티안", players: ["사샤", "카인", "마리 파우렌츠"] },
@@ -203,16 +204,9 @@ function renderSelection() {
 
 function confirmTeam() {
     const data = TEAMS_DATA[ST.selectedTeamName];
-    const posSet = [
-        {p:'공격수', s:['공격','속도','기술']},
-        {p:'미드필더', s:['공격','협력','기술']},
-        {p:'수비수', s:['수비','협력','체력']},
-        {p:'골키퍼', s:['수비','체력','속도']}
-    ];
+    const posSet = [{p:'공격수', s:['공격','속도','기술']},{p:'미드필더', s:['공격','협력','기술']},{p:'수비수', s:['수비','협력','체력']},{p:'골키퍼', s:['수비','체력','속도']}];
     ST.players = [data.captain, ...data.players].map((n, i) => ({ 
-        name: n, 
-        pos: posSet[i].p, 
-        target: posSet[i].s, 
+        name: n, pos: posSet[i].p, target: posSet[i].s, 
         stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} 
     }));
     ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
@@ -224,9 +218,7 @@ function confirmTeam() {
 
 function calculateTotals() {
     let teamTotals = { '공격':0,'수비':0,'협력':0,'기술':0,'체력':0,'속도':0 };
-    ST.players.forEach(p => { 
-        p.target.forEach(sName => { teamTotals[sName] += p.stats[sName]; }); 
-    });
+    ST.players.forEach(p => { p.target.forEach(sName => { teamTotals[sName] += p.stats[sName]; }); });
     const S = Object.values(teamTotals).reduce((a,b)=>a+b, 0);
     return { t: teamTotals, S: S };
 }
@@ -235,12 +227,10 @@ function render() {
     if (!ST.players.length) return;
     const { t, S } = calculateTotals();
     const league = LEAGUES[ST.leagueIdx];
-    
-    // 일자 및 주차 계산
     const currentWeek = Math.min(10, Math.floor((ST.day - 1) / 7) + 1);
+    
     document.getElementById('currentDayLabel').innerText = `${ST.day}일차`;
     document.getElementById('currentWeekLabel').innerText = `${currentWeek}주차 진행 중`;
-    
     document.getElementById('tpLabel').innerText = ST.tp;
     document.getElementById('totalStatsTextProfile').innerText = `팀 종합 스탯 ${S}`;
     document.getElementById('totalStatsTextTrain').innerText = `현재 종합 스탯 ${S}`;
@@ -248,21 +238,14 @@ function render() {
     document.getElementById('enemyTeamLabel').innerText = ST.enemy;
     document.getElementById('currentLeagueName').innerText = league.name;
     
-    // 선수 명단 UI 렌더링
     const pListUI = document.getElementById('playerListUI');
     pListUI.innerHTML = ST.players.map(p => {
         const statsHtml = Object.keys(p.stats).map(sKey => {
             const isTarget = p.target.includes(sKey);
-            return `<div class="p-stat-item ${isTarget ? 'highlight' : ''}">${sKey} <b>${p.stats[sKey]}</b></div>`;
+            const isMax = p.stats[sKey] >= MAX_STAT;
+            return `<div class="p-stat-item ${isTarget ? 'highlight' : ''} ${isMax ? 'max' : ''}">${sKey} <b>${p.stats[sKey]}${isMax ? '(MAX)' : ''}</b></div>`;
         }).join('');
-        
-        return `
-            <div class="player-item">
-                <div class="p-pos">${p.pos}</div>
-                <div class="p-name">${p.name}</div>
-                <div class="p-stat-grid">${statsHtml}</div>
-            </div>
-        `;
+        return `<div class="player-item"><div class="p-pos">${p.pos}</div><div class="p-name">${p.name}</div><div class="p-stat-grid">${statsHtml}</div></div>`;
     }).join('');
     
     drawRadar('radarSvgProfile', t);
@@ -289,7 +272,40 @@ function render() {
     ST.curProb = (S <= league.M) ? 5 : (S >= league.N) ? 100 : Math.pow((S-league.M)/(league.N-league.M), kr)*100;
 }
 
-// 나머지 로직 (drawRadar, playMatch, nextDay 등)은 이전과 동일하게 유지됩니다.
+// 훈련 로직 업데이트
+function doTrain(tid) {
+    const t = TRAINS.find(x => x.id === tid);
+    if (ST.tp < t.cost) return showToast("훈련 포인트가 부족합니다!");
+
+    // 1. 모든 관련 스탯이 이미 MAX인지 체크
+    let allMax = true;
+    ST.players.forEach(p => {
+        t.stats.forEach(s => {
+            if (p.stats[s] < MAX_STAT) allMax = false;
+        });
+    });
+
+    if (allMax) {
+        alert(`이미 '${t.name}'으로 올릴 수 있는 모든 스탯이 최대치(MAX)입니다.\n다른 훈련 항목에 투자하여 효율을 높여보세요!`);
+        return;
+    }
+
+    // 2. 훈련 진행 (MAX가 아닌 스탯만 상승)
+    let growthCount = 0;
+    ST.players.forEach(p => {
+        t.stats.forEach(s => {
+            if (p.stats[s] < MAX_STAT) {
+                p.stats[s] = Math.min(MAX_STAT, p.stats[s] + 6);
+                growthCount++;
+            }
+        });
+    });
+
+    ST.tp -= t.cost;
+    showToast(`훈련 완료! 팀 점수가 상승했습니다.<br><small>(MAX 도달 스탯 제외 ${growthCount}개 항목 성장)</small>`);
+    render();
+}
+
 function drawRadar(id, totals) {
     const svg = document.getElementById(id);
     const labels = ['공격','수비','협력','기술','체력','속도'];
@@ -333,14 +349,6 @@ function nextDay() {
     ST.day++; ST.tp += 100; render();
 }
 
-function doTrain(tid) {
-    const t = TRAINS.find(x => x.id === tid);
-    if (ST.tp < t.cost) return showToast("훈련 포인트가 부족합니다!");
-    ST.tp -= t.cost;
-    ST.players.forEach(p => { t.stats.forEach(s => { p.stats[s] = Math.min(400, p.stats[s] + 6); }); });
-    render();
-}
-
 function switchTab(id, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -351,7 +359,7 @@ function switchTab(id, btn) {
 
 function showToast(m) {
     const t = document.getElementById('toast');
-    t.innerText = m; t.classList.add('show');
+    t.innerHTML = m; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
 }
 
