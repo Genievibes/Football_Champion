@@ -21,11 +21,11 @@
         body { background: var(--bg-dark); color: var(--text-main); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; overflow-x: hidden; }
         #app { max-width: 500px; margin: 0 auto; position: relative; padding-bottom: 40px; }
 
-        /* 상단 정보바 */
+        /* 상단 유틸리티 */
         .top-util { display: flex; justify-content: space-between; padding: 15px 20px; align-items: center; gap: 10px; }
         .status-badges { display: flex; gap: 8px; }
         .day-badge { background: rgba(212, 173, 106, 0.1); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); font-weight: 800; font-size: 13px; }
-        .next-day-btn { background: var(--accent); color: #000; padding: 6px 14px; border-radius: 6px; border: none; font-weight: 800; cursor: pointer; font-size: 13px; box-shadow: 0 4px 10px rgba(212, 173, 106, 0.3); }
+        .next-day-btn { background: var(--accent); color: #000; padding: 6px 14px; border-radius: 6px; border: none; font-weight: 800; cursor: pointer; font-size: 13px; }
 
         .header { text-align: center; padding: 20px 20px 10px; }
         .event-badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 1px; padding: 4px 14px; border-radius: 4px; margin-bottom: 12px; background: var(--accent); color: #000; }
@@ -33,7 +33,7 @@
 
         /* 탭 시스템 */
         .tabs { display: grid; grid-template-columns: repeat(3, 1fr); margin: 15px 16px; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 4px; }
-        .tab-btn { background: transparent; border: none; padding: 12px; color: var(--text-dim); font-weight: 700; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .tab-btn { background: transparent; border: none; padding: 12px; color: var(--text-dim); font-weight: 700; font-size: 13px; cursor: pointer; }
         .tab-btn.active { background: var(--accent); color: #000; border-radius: 8px; }
 
         .panel { display: none; padding: 0 16px; animation: fadeIn 0.3s ease-out; }
@@ -43,6 +43,12 @@
         .card { background: var(--card-bg); border: 1px solid rgba(212, 173, 106, 0.2); border-radius: 20px; padding: 20px; margin-bottom: 16px; position: relative; }
         .league-title-main { font-size: 20px; font-weight: 900; color: var(--accent-bright); text-align: center; margin-bottom: 15px; display: block; }
         .card-title-sub { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 15px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+
+        /* 훈련 스탯 정보 바 */
+        .train-status-bar { display: flex; justify-content: center; gap: 15px; margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 12px; }
+        .status-item { text-align: center; }
+        .status-label { font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 2px; }
+        .status-value { font-size: 16px; font-weight: 900; color: var(--accent); }
 
         /* 선수 카드 */
         .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
@@ -68,8 +74,7 @@
 
         /* 대진표 UI */
         .bracket-wrapper { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 25px 0 10px; }
-        .bracket-step { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; z-index: 2; }
-        .bracket-node { width: 40px; height: 40px; border-radius: 50%; background: #1a1f26; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; color: #555; transition: 0.3s; }
+        .bracket-node { width: 40px; height: 40px; border-radius: 50%; background: #1a1f26; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; color: #555; }
         .bracket-node.active { background: var(--accent); border-color: var(--accent-bright); color: #000; box-shadow: 0 0 15px var(--accent); }
         .bracket-node.complete { background: var(--win); border-color: var(--win); color: #fff; }
         .bracket-connector { position: absolute; top: 45px; left: 12.5%; width: 75%; height: 2px; background: #222; z-index: 1; }
@@ -112,12 +117,12 @@
             </div>
             <div id="teamInfoArea" style="display:none;">
                 <div class="card" style="text-align:center;">
-                    <div class="card-title-sub">📊 팀 종합 실력</div>
+                    <div class="card-title-sub">📊 팀 종합 스탯</div>
                     <div class="radar-box"><svg id="radarSvgProfile" width="200" height="200" viewBox="0 0 200 200"></svg></div>
                     <div id="totalStatsTextProfile" style="font-size:18px; margin-top:15px; color:var(--accent-bright); font-weight:900;"></div>
                 </div>
                 <div class="card">
-                    <div class="card-title-sub">👥 포지션별 전용 스탯 현황</div>
+                    <div class="card-title-sub">👥 소속 선수 명단</div>
                     <div id="playerListUI" class="player-list"></div>
                 </div>
             </div>
@@ -127,7 +132,18 @@
             <div class="card" style="text-align:center;">
                 <div class="card-title-sub">성장 그래프</div>
                 <div class="radar-box"><svg id="radarSvgTrain" width="200" height="200" viewBox="0 0 200 200"></svg></div>
-                <div style="font-size:13px; color:var(--text-dim); margin-top:12px;">보유 훈련 포인트: <span id="tpLabel" style="color:var(--accent); font-weight:900; font-size:18px;">0</span></div>
+                
+                <div class="train-status-bar">
+                    <div class="status-item">
+                        <span class="status-label">보유 포인트</span>
+                        <span id="tpLabel" class="status-value">0</span><span style="font-size:12px; color:var(--accent);">P</span>
+                    </div>
+                    <div style="width:1px; background:rgba(255,255,255,0.1); margin:5px 0;"></div>
+                    <div class="status-item">
+                        <span class="status-label">팀 전체 스탯</span>
+                        <span id="totalStatsTextTrain" class="status-value">0</span>
+                    </div>
+                </div>
             </div>
             <div id="trainMenu"></div>
         </div>
@@ -137,25 +153,24 @@
                 <span id="leagueName" class="league-title-main">1차 예선</span>
                 <div class="bracket-wrapper">
                     <div class="bracket-connector"><div id="connectorProgress" class="connector-progress"></div></div>
-                    <div class="bracket-step"><div class="bracket-node" id="node-1">8</div><div class="bracket-label" style="font-size:10px; margin-top:4px;">8강</div></div>
-                    <div class="bracket-step"><div class="bracket-node" id="node-2">4</div><div class="bracket-label" style="font-size:10px; margin-top:4px;">4강</div></div>
-                    <div class="bracket-step"><div class="bracket-node" id="node-3">2</div><div class="bracket-label" style="font-size:10px; margin-top:4px;">결승</div></div>
-                    <div class="bracket-step"><div class="bracket-node" id="node-4">🏆</div><div class="bracket-label" style="font-size:10px; margin-top:4px;">우승</div></div>
+                    <div class="bracket-step"><div class="bracket-node" id="node-1">8</div><div style="font-size:10px; margin-top:4px;">8강</div></div>
+                    <div class="bracket-step"><div class="bracket-node" id="node-2">4</div><div style="font-size:10px; margin-top:4px;">4강</div></div>
+                    <div class="bracket-step"><div class="bracket-node" id="node-3">2</div><div style="font-size:10px; margin-top:4px;">결승</div></div>
+                    <div class="bracket-step"><div class="bracket-node" id="node-4">🏆</div><div style="font-size:10px; margin-top:4px;">우승</div></div>
                 </div>
             </div>
             <div id="matchCard" class="card">
                 <div style="text-align:center; padding:15px;">
                     <div id="myTeamLabel" style="font-weight:900; font-size:18px;">우리팀</div>
-                    <div style="color:var(--accent); font-weight:900; margin:8px 0;">VS</div>
-                    <div id="enemyTeamLabel" style="font-weight:900; font-size:20px; color:var(--error);">상대팀</div>
-                    <div id="probLabel" style="font-size:12px; color:var(--text-dim); margin-top:10px; background:rgba(255,255,255,0.05); padding:4px; border-radius:4px;">승리 예상 확률: 0%</div>
+                    <div style="color:var(--accent); font-weight:900; margin:12px 0; font-size:20px;">VS</div>
+                    <div id="enemyTeamLabel" style="font-weight:900; font-size:22px; color:var(--error);">상대팀</div>
                 </div>
                 <button class="btn btn-primary" id="matchBtn" onclick="playMatch()">경기 시작</button>
-                <div id="failMsg" style="display:none; margin-top:12px; color:var(--error); font-size:13px; text-align:center; font-weight:700;">오늘 경기에 패배했습니다. 내일 다시 도전하세요!</div>
+                <div id="failMsg" style="display:none; margin-top:12px; color:var(--error); font-size:13px; text-align:center; font-weight:700;">패배했습니다. 전력을 보강하여 내일 다시 도전하세요!</div>
             </div>
             <div id="clearMsg" class="card" style="display:none; text-align:center; padding:30px 10px;">
                 <div style="font-weight:900; color:var(--win); font-size:22px;">LEAGUE CLEARED!</div>
-                <div style="font-size:13px; color:var(--text-dim); margin-top:10px;">다음 날로 넘어가면 상위 리그로 진출합니다.</div>
+                <div style="font-size:13px; color:var(--text-dim); margin-top:10px;">내일 새로운 리그가 시작됩니다.</div>
             </div>
         </div>
     </div>
@@ -203,12 +218,7 @@ function renderSelection() {
 
 function confirmTeam() {
     const data = TEAMS_DATA[ST.selectedTeamName];
-    const posSet = [
-        {p:'공격수', s:['공격','속도','기술']},
-        {p:'미드필더', s:['공격','협력','기술']},
-        {p:'수비수', s:['수비','협력','체력']},
-        {p:'골키퍼', s:['수비','체력','속도']}
-    ];
+    const posSet = [{p:'공격수', s:['공격','속도','기술']},{p:'미드필더', s:['공격','협력','기술']},{p:'수비수', s:['수비','협력','체력']},{p:'골키퍼', s:['수비','체력','속도']}];
     ST.players = [data.captain, ...data.players].map((n, i) => ({ 
         name: n, pos: posSet[i].p, target: posSet[i].s, 
         stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} 
@@ -235,25 +245,21 @@ function render() {
     document.getElementById('dayLabel').innerText = `${ST.day}일차`;
     document.getElementById('weekLabel').innerText = `${Math.floor((ST.day-1)/7)+1}주차`;
     document.getElementById('tpLabel').innerText = ST.tp;
-    document.getElementById('totalStatsTextProfile').innerText = `팀 종합 전투력 ${S}`;
+    document.getElementById('totalStatsTextProfile').innerText = S;
+    document.getElementById('totalStatsTextTrain').innerText = S;
     document.getElementById('myTeamLabel').innerText = ST.selectedTeamName;
     document.getElementById('enemyTeamLabel').innerText = ST.enemy;
     document.getElementById('leagueName').innerText = league.name;
     
-    // 선수 리스트 (담당 스탯 필터링)
     const pListUI = document.getElementById('playerListUI');
     pListUI.innerHTML = ST.players.map(p => {
-        const statsHtml = p.target.map(s => {
-            const isMax = p.stats[s] >= MAX_STAT;
-            return `<div class="p-stat-item ${isMax ? 'max' : ''}"><span>${s}</span> <b>${p.stats[s]}${isMax?'(MAX)':''}</b></div>`;
-        }).join('');
+        const statsHtml = p.target.map(s => `<div class="p-stat-item ${p.stats[s]>=MAX_STAT?'max':''}"><span>${s}</span> <b>${p.stats[s]}</b></div>`).join('');
         return `<div class="player-item"><div class="p-pos">${p.pos}</div><div class="p-name">${p.name}</div><div class="p-stat-grid">${statsHtml}</div></div>`;
     }).join('');
     
     drawRadar('radarSvgProfile', totals);
     drawRadar('radarSvgTrain', totals);
     
-    // 대진표 업데이트
     const progress = document.getElementById('connectorProgress');
     let progressVal = 0;
     for(let i=1; i<=4; i++){
@@ -265,20 +271,13 @@ function render() {
     }
     progress.style.width = `${progressVal}%`;
     
-    // 경기 섹션 상태 제어
     const mCard = document.getElementById('matchCard');
     const cMsg = document.getElementById('clearMsg');
-    if (ST.isLeagueCleared) { 
-        mCard.style.display = 'none'; cMsg.style.display = 'block'; 
-    } else { 
-        mCard.style.display = 'block'; cMsg.style.display = 'none'; 
-        document.getElementById('matchBtn').disabled = ST.isFailed;
-        document.getElementById('failMsg').style.display = ST.isFailed ? 'block' : 'none';
-    }
+    if (ST.isLeagueCleared) { mCard.style.display = 'none'; cMsg.style.display = 'block'; }
+    else { mCard.style.display = 'block'; cMsg.style.display = 'none'; document.getElementById('matchBtn').disabled = ST.isFailed; document.getElementById('failMsg').style.display = ST.isFailed ? 'block' : 'none'; }
     
     const kr = [0, 1, 1.5, 2][ST.round];
     ST.curProb = (S < league.M) ? 0 : (S >= league.N) ? 100 : Math.pow((S - league.M) / (league.N - league.M), kr) * 100;
-    document.getElementById('probLabel').innerText = `승리 예상 확률: ${Math.floor(ST.curProb)}%`;
 }
 
 function showOverlay(title, sub, type) {
@@ -286,66 +285,52 @@ function showOverlay(title, sub, type) {
     const t = document.getElementById('resTitle');
     const s = document.getElementById('resSub');
     t.className = "res-title";
-    
     if(type === 'win') t.classList.add('win-text');
     else if(type === 'lose') t.classList.add('lose-text');
     else if(type === 'great') t.classList.add('great-text');
-
-    t.innerText = title;
-    s.innerText = sub;
-    ov.classList.add('show');
+    t.innerText = title; s.innerText = sub; ov.classList.add('show');
 }
 
 function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
-    if (ST.tp < t.cost) { alert("훈련 포인트가 부족합니다!"); return; }
-
+    if (ST.tp < t.cost) return alert("훈련 포인트가 부족합니다!");
     let targetable = false;
     ST.players.forEach(p => { t.stats.forEach(s => { if(p.stats[s] < MAX_STAT) targetable = true; }); });
-    if (!targetable) { alert("선택한 훈련으로 더 이상 성장할 수 없습니다 (MAX 도달)"); return; }
+    if (!targetable) return alert("이미 모든 스탯이 최대치입니다.");
 
     const isGreat = Math.random() < 0.05;
     const inc = isGreat ? 10 : 5;
     ST.players.forEach(p => { t.stats.forEach(s => { p.stats[s] = Math.min(MAX_STAT, p.stats[s] + inc); }); });
     ST.tp -= t.cost;
-    
-    render(); // 오버레이 띄우기 전 데이터 동기화
-    showOverlay(isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", isGreat ? "모든 관련 능력치가 +10 상승했습니다!" : "선수들이 성실히 훈련에 임해 능력치가 +5 상승했습니다.", isGreat ? 'great' : 'win');
+    render();
+    showOverlay(isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", isGreat ? "모든 관련 능력치가 +10 상승했습니다!" : "훈련을 무사히 마쳐 능력치가 +5 상승했습니다.", isGreat ? 'great' : 'win');
 }
 
 function playMatch() {
     if (ST.isFailed || ST.isLeagueCleared) return;
     document.getElementById('matchBtn').disabled = true;
-
     setTimeout(() => {
         if (Math.random() * 100 <= ST.curProb) {
             if (ST.round < 3) {
-                ST.round++;
-                ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1];
-                showOverlay("MATCH WIN", "전술적 우위를 바탕으로 승리했습니다! 다음 라운드 진출.", "win");
+                ST.round++; ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1];
+                showOverlay("MATCH WIN", "승리하여 다음 라운드에 진출했습니다!", "win");
             } else {
                 ST.isLeagueCleared = true;
-                showOverlay("🏆 CHAMPION 🏆", `${LEAGUES[ST.leagueIdx].name} 정상을 정복했습니다! 원정대의 이름을 널리 알립니다.`, "great");
+                showOverlay("🏆 CHAMPION 🏆", `${LEAGUES[ST.leagueIdx].name} 우승을 차지했습니다!`, "great");
             }
         } else {
             ST.isFailed = true;
-            showOverlay("MATCH LOSS", "상대의 거센 압박에 패배했습니다. 전력을 보강하세요.", "lose");
+            showOverlay("MATCH LOSS", "패배했습니다. 전력을 보강하여 재도전하세요.", "lose");
         }
         render();
     }, 600);
 }
 
 function nextDay() {
-    if (ST.day >= 70) { alert("시즌이 종료되었습니다."); return; }
+    if (ST.day >= 70) return alert("시즌 종료");
     ST.day++; ST.tp += 100;
-    
-    if (ST.isFailed) { // 패배 후 다음날: 현재 리그 1라운드부터 재시작
-        ST.isFailed = false; ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-    } else if (ST.isLeagueCleared) { // 우승 후 다음날: 다음 리그 진출
-        if (ST.leagueIdx < LEAGUES.length - 1) {
-            ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
-        }
-    }
+    if (ST.isFailed) { ST.isFailed = false; ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
+    else if (ST.isLeagueCleared && ST.leagueIdx < 3) { ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
     render();
 }
 
