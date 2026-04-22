@@ -269,8 +269,9 @@ function doTrain(tid) {
     if (ST.tp < t.cost) return alert("포인트 부족!");
 
     let growthLogs = [];
-    let statSummary = {};
+    let appliedStats = new Set();
     let grew = false;
+    let isGreatSuccess = false;
 
     ST.players.forEach(p => {
         let playerGrowth = [];
@@ -278,12 +279,14 @@ function doTrain(tid) {
         
         validStats.forEach(s => {
             if (p.stats[s] < MAX_STAT) {
-                const isGreat = Math.random() < 0.05;
+                const isGreat = Math.random() < 0.1; // 10% 확률로 대성공
+                if (isGreat) isGreatSuccess = true;
+
                 const inc = isGreat ? 10 : 5;
                 p.stats[s] = Math.min(MAX_STAT, p.stats[s] + inc);
                 
                 playerGrowth.push(`<strong>${s}</strong> +${inc}`);
-                statSummary[s] = (statSummary[s] || 0) + inc;
+                appliedStats.add(s);
                 grew = true;
             }
         });
@@ -300,21 +303,22 @@ function doTrain(tid) {
     ST.tp -= t.cost;
     render();
 
-    // 상단 요약 텍스트 구성 (예: 체력 +20, 속도 +10)
-    const summaryText = Object.entries(statSummary)
-        .map(([name, value]) => `${name} <span style="color:var(--accent-bright);">+${value}</span>`)
+    // 팝업 안내 문구 (성공은 +5, 대성공은 +10 기준으로 표시)
+    const baseInc = isGreatSuccess ? 10 : 5;
+    const summaryText = Array.from(appliedStats)
+        .map(s => `${s} <span style="color:var(--accent-bright);">+${baseInc}</span>`)
         .join(', ');
 
     const finalContent = `
         <div style="font-size:18px; font-weight:900; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; text-align:center;">
-            ${summaryText} 증가했습니다!
+            ${isGreatSuccess ? '<span style="color:var(--accent-bright);">✨ 대성공! ✨</span><br>' : ''} ${summaryText} 증가했습니다!
         </div>
         <div style="font-size:13px; line-height:1.8;">
             ${growthLogs.join('<br>')}
         </div>
     `;
 
-    showOverlay("TRAINING SUCCESS", finalContent, "win");
+    showOverlay(isGreatSuccess ? "GREAT SUCCESS" : "TRAINING SUCCESS", finalContent, "win");
 }
 
 function playMatch() {
