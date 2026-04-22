@@ -59,8 +59,8 @@
 
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(10px); cursor: pointer; }
         .overlay.show { display: flex; }
-        .res-title { font-size: 32px; font-weight: 900; margin-bottom: 10px; text-align: center; width: 90%; }
-        .res-sub { font-size: 16px; font-weight: 700; color: var(--text-dim); text-align: center; max-width: 85%; line-height: 1.6; }
+        .res-title { font-size: 28px; font-weight: 900; margin-bottom: 20px; text-align: center; width: 90%; }
+        .res-sub { font-size: 15px; font-weight: 500; color: var(--text-main); text-align: left; width: 80%; line-height: 1.8; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; }
 
         .list-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer; }
     </style>
@@ -69,6 +69,7 @@
     <div id="resOverlay" class="overlay" onclick="this.classList.remove('show')">
         <div id="resTitle" class="res-title"></div>
         <div id="resSub" class="res-sub"></div>
+        <div style="margin-top:20px; color:var(--text-dim); font-size:12px;">화면을 클릭하여 닫기</div>
     </div>
 
     <div id="app">
@@ -216,7 +217,7 @@ function render() {
     
     document.getElementById('dayLabel').innerText = `${ST.day}일차`;
     document.getElementById('tpLabel').innerText = ST.tp;
-    document.getElementById('totalStatsTextProfile').innerText = `전투력: ${S}`;
+    document.getElementById('totalStatsTextProfile').innerText = `${S}`;
     document.getElementById('totalStatsTextTrain').innerText = S;
     
     document.getElementById('leagueName').innerText = league.name;
@@ -258,34 +259,44 @@ function showOverlay(title, sub, type) {
     const s = document.getElementById('resSub');
     t.className = "res-title";
     t.style.color = type === 'win' ? "var(--win)" : "var(--error)";
-    t.innerText = title; s.innerText = sub; ov.classList.add('show');
+    t.innerText = title; 
+    s.innerHTML = sub; // HTML 로그 적용
+    ov.classList.add('show');
 }
 
 function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
     if (ST.tp < t.cost) return alert("포인트 부족!");
 
+    let growthLogs = [];
     let grew = false;
+
     ST.players.forEach(p => {
-        // 해당 선수의 주력 스탯(target) 중에서만 성장이 일어나도록 수정
+        let playerGrowth = [];
         const validStats = t.stats.filter(s => p.target.includes(s));
+        
         validStats.forEach(s => {
             if (p.stats[s] < MAX_STAT) {
                 const isGreat = Math.random() < 0.05;
                 const inc = isGreat ? 10 : 5;
                 p.stats[s] = Math.min(MAX_STAT, p.stats[s] + inc);
+                playerGrowth.push(`${s} +${inc}`);
                 grew = true;
             }
         });
+
+        if (playerGrowth.length > 0) {
+            growthLogs.push(`<strong>${p.name}</strong>: ${playerGrowth.join(', ')}`);
+        }
     });
 
     if (!grew) {
-        return alert("선수들의 주력 스탯과 일치하지 않거나 이미 최대치입니다!");
+        return alert("주력 스탯 성장 불가! 다른 훈련을 선택하세요.");
     }
 
     ST.tp -= t.cost;
     render();
-    showOverlay("훈련 성공", "주력 스탯이 향상되었습니다.", "win");
+    showOverlay("TRAINING SUCCESS", growthLogs.join('<br>'), "win");
 }
 
 function playMatch() {
@@ -298,14 +309,14 @@ function playMatch() {
     if (Math.random() * 100 <= winProb) {
         if (ST.round < 3) {
             ST.round++; ST.enemy = league.enemies[ST.round - 1];
-            showOverlay("VICTORY", "상대를 압도하며 다음 라운드에 진출합니다!", "win");
+            showOverlay("VICTORY", "상대를 제압하고 다음 라운드에 진출합니다!", "win");
         } else {
             ST.isLeagueCleared = true;
-            showOverlay("🏆 CHAMPION 🏆", `${league.name} 최종 우승!`, "win");
+            showOverlay("🏆 CHAMPION 🏆", `${league.name} 우승! 아크라시아의 전설이 되었습니다.`, "win");
         }
     } else {
         ST.isFailed = true;
-        showOverlay("DEFEAT", "아쉬운 패배입니다. 내일 다시 도전하세요.", "lose");
+        showOverlay("DEFEAT", "안타까운 패배입니다. 전력을 보강하여 다음 날 다시 도전하세요.", "lose");
     }
     render();
 }
