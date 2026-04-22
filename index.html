@@ -48,8 +48,8 @@
 
         .player-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .player-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; }
-        .p-name { font-size: 14px; font-weight: 900; margin-bottom: 6px; }
-        .p-stat-grid { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+        .p-name { font-size: 14px; font-weight: 900; margin-bottom: 8px; border-bottom: 1px solid rgba(212, 173, 106, 0.2); padding-bottom: 4px; }
+        .p-stat-grid { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
         .p-stat-item { display: flex; justify-content: space-between; color: var(--accent-bright); }
         .p-stat-item.max { color: var(--error); font-weight: 800; }
 
@@ -61,8 +61,6 @@
         .overlay.show { display: flex; }
         .res-title { font-size: 32px; font-weight: 900; margin-bottom: 10px; text-align: center; width: 90%; }
         .res-sub { font-size: 16px; font-weight: 700; color: var(--text-dim); text-align: center; max-width: 85%; line-height: 1.6; }
-        .great-text { color: var(--accent-bright); text-shadow: 0 0 30px rgba(245, 200, 66, 0.8); animation: pulse 0.6s infinite alternate; }
-        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
 
         .list-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 16px; border-radius: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer; }
     </style>
@@ -77,13 +75,13 @@
         <div class="top-util">
             <div class="status-badges">
                 <div class="day-badge" id="dayLabel">1일차</div>
-                <div class="day-badge" id="weekLabel" style="border-color:var(--accent-bright); color:var(--accent-bright);">1주차</div>
+                <div class="day-badge" style="border-color:var(--accent-bright); color:var(--accent-bright);">SEASON 2026</div>
             </div>
             <button class="next-day-btn" onclick="nextDay()">다음 날로 ➔</button>
         </div>
 
         <div class="header">
-            <div class="event-badge">SEASON 2026</div>
+            <div class="event-badge">ARKRASIA FOOTBALL</div>
             <h1>아크라시아 풋볼 챔피언</h1>
         </div>
 
@@ -101,12 +99,12 @@
             </div>
             <div id="teamInfoArea" style="display:none;">
                 <div class="card" style="text-align:center;">
-                    <div class="card-title-sub">📊 팀 종합 능력치 (주력 스탯 합산)</div>
+                    <div class="card-title-sub">📊 팀 전투력 (주력 합산)</div>
                     <div class="radar-box"><svg id="radarSvgProfile" width="200" height="200" viewBox="0 0 200 200"></svg></div>
                     <div id="totalStatsTextProfile" style="font-size:18px; margin-top:15px; color:var(--accent-bright); font-weight:900;"></div>
                 </div>
                 <div class="card">
-                    <div class="card-title-sub">👥 선수 명단</div>
+                    <div class="card-title-sub">👥 선수별 주력 능력치</div>
                     <div id="playerListUI" class="player-list"></div>
                 </div>
             </div>
@@ -118,7 +116,7 @@
                 <div class="radar-box"><svg id="radarSvgTrain" width="200" height="200" viewBox="0 0 200 200"></svg></div>
                 <div class="train-status-bar">
                     <div class="status-item"><span class="status-label">보유 포인트</span><span id="tpLabel" class="status-value">0</span><span style="font-size:12px; color:var(--accent);">P</span></div>
-                    <div class="status-item"><span class="status-label">팀 종합 실력</span><span id="totalStatsTextTrain" class="status-value">0</span></div>
+                    <div class="status-item"><span class="status-label">현재 전투력</span><span id="totalStatsTextTrain" class="status-value">0</span></div>
                 </div>
             </div>
             <div id="trainMenu"></div>
@@ -218,7 +216,7 @@ function render() {
     
     document.getElementById('dayLabel').innerText = `${ST.day}일차`;
     document.getElementById('tpLabel').innerText = ST.tp;
-    document.getElementById('totalStatsTextProfile').innerText = `종합 실력: ${S}`;
+    document.getElementById('totalStatsTextProfile').innerText = `전투력: ${S}`;
     document.getElementById('totalStatsTextTrain').innerText = S;
     
     document.getElementById('leagueName').innerText = league.name;
@@ -231,7 +229,7 @@ function render() {
     
     if (ST.isFailed) {
         mBtn.disabled = true; mMsg.style.display = 'block';
-        mMsg.innerText = "패배했습니다. 다음 날 다시 도전하세요.";
+        mMsg.innerText = "패배했습니다. 내일 다시 도전하세요.";
     } else if (ST.isLeagueCleared) {
         mBtn.disabled = true; mMsg.style.display = 'block';
         mMsg.innerText = "리그 정복!";
@@ -241,11 +239,12 @@ function render() {
 
     const pListUI = document.getElementById('playerListUI');
     pListUI.innerHTML = ST.players.map(p => {
-        const statsHtml = Object.keys(p.stats).map(s => {
-            const isTarget = p.target.includes(s);
-            const isMax = p.stats[s] >= MAX_STAT;
-            return `<div class="p-stat-item ${isMax?'max':''}" style="${isTarget?'':'opacity:0.4; font-weight:400; color:var(--text-dim);'}"><span>${s}</span> <b>${p.stats[s]}</b></div>`;
-        }).join('');
+        const statsHtml = Object.keys(p.stats)
+            .filter(s => p.target.includes(s))
+            .map(s => {
+                const isMax = p.stats[s] >= MAX_STAT;
+                return `<div class="p-stat-item ${isMax?'max':''}"><span>${s}</span> <b>${p.stats[s]}</b></div>`;
+            }).join('');
         return `<div class="player-item"><div class="p-name" style="color:var(--accent);">${p.name}</div><div class="p-stat-grid">${statsHtml}</div></div>`;
     }).join('');
     
@@ -258,8 +257,7 @@ function showOverlay(title, sub, type) {
     const t = document.getElementById('resTitle');
     const s = document.getElementById('resSub');
     t.className = "res-title";
-    if(type === 'great') t.classList.add('great-text');
-    else t.style.color = type === 'win' ? "var(--win)" : "var(--error)";
+    t.style.color = type === 'win' ? "var(--win)" : "var(--error)";
     t.innerText = title; s.innerText = sub; ov.classList.add('show');
 }
 
@@ -267,23 +265,27 @@ function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
     if (ST.tp < t.cost) return alert("포인트 부족!");
 
-    const maxStats = t.stats.filter(s => ST.players.every(p => p.stats[s] >= MAX_STAT));
-    const activeStats = t.stats.filter(s => !maxStats.includes(s));
+    let grew = false;
+    ST.players.forEach(p => {
+        // 해당 선수의 주력 스탯(target) 중에서만 성장이 일어나도록 수정
+        const validStats = t.stats.filter(s => p.target.includes(s));
+        validStats.forEach(s => {
+            if (p.stats[s] < MAX_STAT) {
+                const isGreat = Math.random() < 0.05;
+                const inc = isGreat ? 10 : 5;
+                p.stats[s] = Math.min(MAX_STAT, p.stats[s] + inc);
+                grew = true;
+            }
+        });
+    });
 
-    if (activeStats.length === 0) return alert(`성장 완료! (${maxStats.join(', ')})이 최고치입니다.`);
+    if (!grew) {
+        return alert("선수들의 주력 스탯과 일치하지 않거나 이미 최대치입니다!");
+    }
 
-    const isGreat = Math.random() < 0.05;
-    const incPerStat = (isGreat ? 10 : 5) * t.stats.length / activeStats.length; 
-
-    ST.players.forEach(p => activeStats.forEach(s => p.stats[s] = Math.min(MAX_STAT, p.stats[s] + incPerStat)));
     ST.tp -= t.cost;
     render();
-
-    if (maxStats.length > 0) {
-        showOverlay(isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", `성장 집중! (${maxStats.join(', ')})이 최고치라 (${activeStats.join(', ')})에 화력이 집중되었습니다! (각 +${incPerStat})`, isGreat ? 'great' : 'win');
-    } else {
-        showOverlay(isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", `훈련 완료! 선수들이 성장했습니다. (각 +${incPerStat})`, isGreat ? 'great' : 'win');
-    }
+    showOverlay("훈련 성공", "주력 스탯이 향상되었습니다.", "win");
 }
 
 function playMatch() {
@@ -296,14 +298,14 @@ function playMatch() {
     if (Math.random() * 100 <= winProb) {
         if (ST.round < 3) {
             ST.round++; ST.enemy = league.enemies[ST.round - 1];
-            showOverlay("MATCH WIN", "상대 팀을 꺾고 다음 라운드에 진출합니다!", "win");
+            showOverlay("VICTORY", "상대를 압도하며 다음 라운드에 진출합니다!", "win");
         } else {
             ST.isLeagueCleared = true;
-            showOverlay("🏆 CHAMPION 🏆", `${league.name}의 정점에 섰습니다!`, "great");
+            showOverlay("🏆 CHAMPION 🏆", `${league.name} 최종 우승!`, "win");
         }
     } else {
         ST.isFailed = true;
-        showOverlay("MATCH LOSS", "아쉬운 패배입니다. 전력을 보강하여 내일 다시 도전하세요.", "lose");
+        showOverlay("DEFEAT", "아쉬운 패배입니다. 내일 다시 도전하세요.", "lose");
     }
     render();
 }
