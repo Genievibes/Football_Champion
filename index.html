@@ -130,7 +130,7 @@
                 <div class="train-status-bar">
                     <div class="status-item">
                         <span class="status-label">보유 포인트</span>
-                        <span id="tpLabel" class="status-value">40</span><span style="font-size:12px; color:var(--accent);">P</span>
+                        <span id="tpLabel" class="status-value">0</span><span style="font-size:12px; color:var(--accent);">P</span>
                     </div>
                     <div style="width:1px; background:rgba(255,255,255,0.1); margin:5px 0;"></div>
                     <div class="status-item">
@@ -171,17 +171,16 @@
 
 <script>
 // --- 기획 규칙 상수 ---
-const MAX_STAT = 200; 
-const TEAM_MAX_STAT = 400; 
+const MAX_STAT = 200; // 개인 스탯 상한
+const TEAM_MAX_STAT = 400; // 팀 등급 SS 기준
 
-// 요청하신 순서대로 훈련 명칭 및 스탯 매핑 수정
 const TRAINS = [
-    { id:'t1', name:"체력 훈련", cost:20, stats:['체력','속도'] },
-    { id:'t2', name:"전술 훈련", cost:20, stats:['수비','협력'] },
-    { id:'t3', name:"슈팅 훈련", cost:20, stats:['공격','기술'] },
-    { id:'t4', name:"단체 명상", cost:30, stats:['수비','체력','속도'] },
-    { id:'t5', name:"비디오 분석", cost:30, stats:['공격','협력','기술'] },
-    { id:'t6', name:"전문 코치 초청 강의", cost:60, stats:['공격','수비','협력','기술','체력','속도'] }
+    { id:'t1', name:"체력 훈련", cost:20, stats:['체력','속도'], total: 10, totalGreat: 20 },
+    { id:'t2', name:"전술 훈련", cost:20, stats:['수비','협력'], total: 10, totalGreat: 20 },
+    { id:'t3', name:"슈팅 훈련", cost:20, stats:['공격','기술'], total: 10, totalGreat: 20 },
+    { id:'t4', name:"단체 명상", cost:30, stats:['수비','체력','속도'], total: 15, totalGreat: 30 },
+    { id:'t5', name:"비디오 분석", cost:30, stats:['공격','협력','기술'], total: 15, totalGreat: 30 },
+    { id:'t6', name:"전문 코치 초청 강의", cost:60, stats:['공격','수비','협력','기술','체력','속도'], total: 30, totalGreat: 60 }
 ];
 
 const TEAMS_DATA = {
@@ -199,7 +198,7 @@ const LEAGUES = [
     { name: "아크라시아 컵", M: 2200, N: 2400, enemies: ["니나브", "카단", "웨이", "바훈투르", "아제나&이난나", "샨디", "실리안"] }
 ];
 
-let ST = { day: 1, tp: 40, leagueIdx: 0, round: 1, selectedTeamName: null, players: [], enemy: null, isLeagueCleared: false, isFailed: false, curProb: 0 };
+let ST = { day: 1, tp: 100, leagueIdx: 0, round: 1, selectedTeamName: null, players: [], enemy: null, isLeagueCleared: false, isFailed: false, curProb: 0 };
 
 function getPlayerGrade(stat) {
     if (stat >= 200) return 'SS';
@@ -304,28 +303,70 @@ function showOverlay(title, sub, type) {
     t.innerText = title; s.innerText = sub; ov.classList.add('show');
 }
 
+// --- 고정 총량 균등 분배 및 상황별 알럿 로직 ---
 function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
     if (ST.tp < t.cost) return alert("훈련 포인트가 부족합니다!");
 
-    const isGreat = Math.random() < 0.05; // 5% 확률 대성공
-    const INC = isGreat ? 10 : 5; // 개별 스탯 증가치 (성공 +5, 대성공 +10)
+    const isGreat = Math.random() < 0.05;
+    const TOTAL_INC = isGreat ? t.totalGreat : t.total; // 기획안 총 상승분
     
+    // 1. 모든 스탯이 MAX인지 체크 (기획안 최종 문구 대응)
+    const isEverythingMax = ST.players.every(p => Object.values(p.stats).every(v => v >= MAX_STAT));
+    if (isEverythingMax) {
+        return alert("모든 스탯의 성장이 완료되었습니다.\n이제 어느 팀도 두렵지 않습니다!");
+    }
+
+    // 2. 해당 훈련 항목 내 스탯 상태 분석
+    let allTrainStatsMax = true;
+    let anyStatMaxedInTrain = false;
+    let maxedList = [];
+    let activeList = [];
+
     ST.players.forEach(p => {
-        t.stats.forEach(sName => {
-            if (p.stats[sName] < MAX_STAT) {
-                p.stats[sName] = Math.min(MAX_STAT, p.stats[sName] + INC);
-            }
+        t.stats.forEach(s => {
+            if (p.stats[s] < MAX_STAT) allTrainStatsMax = false;
+            else anyStatMaxedInTrain = true;
         });
+    });
+
+    // 3. 훈련 항목 내 모든 스탯이 MAX인 경우
+    if (allTrainStatsMax) {
+        return alert(`성장 완료! (${t.stats.join(', ')})이 모두 최고치에 도달하였습니다.\n다른 훈련을 진행해 보세요!`);
+    }
+
+    // 4. 스탯 분배 로직 (고정 총량 균등 분배)
+    ST.players.forEach(p => {
+        const pActiveStats = t.stats.filter(s => p.stats[s] < MAX_STAT);
+        const pMaxedStats = t.stats.filter(s => p.stats[s] >= MAX_STAT);
+        
+        if (pActiveStats.length > 0) {
+            const perStatInc = TOTAL_INC / pActiveStats.length; // 균등 분배 계산
+            pActiveStats.forEach(s => {
+                p.stats[s] = Math.min(MAX_STAT, p.stats[s] + perStatInc);
+            });
+            
+            if (pMaxedStats.length > 0) {
+                maxedList.push(...pMaxedStats);
+                activeList.push(...pActiveStats);
+            }
+        }
     });
 
     ST.tp -= t.cost;
     render();
 
+    // 5. 일부 MAX 시 집중 알럿 (중복 제거 후 출력)
+    if (maxedList.length > 0) {
+        const uniqueMaxed = [...new Set(maxedList)].join(', ');
+        const uniqueActive = [...new Set(activeList)].join(', ');
+        alert(`성장 집중! (${uniqueMaxed})이 최고치에 도달하여, (${uniqueActive})에 훈련 화력이 집중되었습니다.`);
+    }
+
     const statText = t.stats.join(', ');
     showOverlay(
         isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", 
-        isGreat ? `훈련 효율 폭발! [${statText}]이 각각 +${INC}씩 상승!` : `무사히 훈련을 마쳤습니다. [${statText}]이 각각 +${INC}씩 상승!`, 
+        isGreat ? `훈련 효율 폭발! [${statText}] 총합 +${TOTAL_INC} 상승!` : `무사히 훈련을 마쳤습니다. [${statText}] 총합 +${TOTAL_INC} 상승!`, 
         isGreat ? 'great' : 'win'
     );
 }
@@ -352,8 +393,7 @@ function playMatch() {
 
 function nextDay() {
     if (ST.day >= 70) return alert("시즌 종료");
-    ST.day++; 
-    ST.tp += 40; 
+    ST.day++; ST.tp += 100;
     if (ST.isFailed) { ST.isFailed = false; ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
     else if (ST.isLeagueCleared && ST.leagueIdx < 3) { ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
     render();
