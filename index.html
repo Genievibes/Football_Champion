@@ -170,18 +170,18 @@
     </div>
 
 <script>
-const MAX_STAT = 200;
-const TEAM_MAX_STAT = 400;
-const DAILY_TP = 40; // 일일 획득 포인트 설정값
+const MAX_STAT = 200; // 개별 선수 MAX
+const TEAM_MAX_STAT = 400; // 팀 종합 MAX (SS등급 기준)
+const DAILY_TP = 40; // 일일 획득 포인트
 
-// 1P당 성공 1.0 / 대성공 2.0 효율 (total 수치를 cost와 일치시킴)
+// 기획서 기반 훈련 데이터 정의
 const TRAINS = [
-    { id:'t1', name:"체력 훈련", cost:20, stats:['체력','속도'], total: 20, totalGreat: 40 },
-    { id:'t2', name:"전술 훈련", cost:20, stats:['수비','협력'], total: 20, totalGreat: 40 },
-    { id:'t3', name:"슈팅 훈련", cost:20, stats:['공격','기술'], total: 20, totalGreat: 40 },
-    { id:'t4', name:"단체 명상", cost:30, stats:['수비','체력','속도'], total: 30, totalGreat: 60 },
-    { id:'t5', name:"비디오 분석", cost:30, stats:['공격','협력','기술'], total: 30, totalGreat: 60 },
-    { id:'t6', name:"전문 코치 초청 강의", cost:60, stats:['공격','수비','협력','기술','체력','속도'], total: 60, totalGreat: 120 }
+    { id:'t1', name:"셔틀런", cost:20, stats:['체력','속도'] },
+    { id:'t2', name:"슈팅 연습", cost:20, stats:['공격','기술'] },
+    { id:'t3', name:"전술 훈련", cost:20, stats:['수비','협력'] },
+    { id:'t4', name:"미니 게임", cost:30, stats:['공격','협력','기술'] },
+    { id:'t5', name:"담력 훈련", cost:30, stats:['수비','체력','속도'] },
+    { id:'t6', name:"해외 전지훈련", cost:60, stats:['공격','수비','협력','기술','체력','속도'] }
 ];
 
 const TEAMS_DATA = {
@@ -192,7 +192,6 @@ const TEAMS_DATA = {
     "SSC 볼다이크": { captain: "세헤라데", players: ["마레가", "아이작", "마리우"] }
 };
 
-// 아크라시아 컵 난이도 유지 (M: 2200, N: 2400)
 const LEAGUES = [
     { name: "1차 예선", M: 480, N: 960, enemies: ["레온하트 네리아", "루테란 성 네리아", "슈테른 네리아", "위대한 성 네리아", "칸다리아 네리아", "칼리나리 네리아", "갈기파도 네리아"] },
     { name: "2차 예선", M: 960, N: 1440, enemies: ["판다 푸푸", "샐리", "다람쥐 욤", "나루니", "코니", "토토이끼", "파파"] },
@@ -200,14 +199,23 @@ const LEAGUES = [
     { name: "아크라시아 컵", M: 2200, N: 2400, enemies: ["니나브", "카단", "웨이", "바훈투르", "아제나&이난나", "샨디", "실리안"] }
 ];
 
-// 초기 TP를 DAILY_TP(40)로 설정
 let ST = { day: 1, tp: DAILY_TP, leagueIdx: 0, round: 1, selectedTeamName: null, players: [], enemy: null, isLeagueCleared: false, isFailed: false, curProb: 0 };
 
+// 개별 선수 등급 로직
 function getPlayerGrade(stat) {
     if (stat >= 200) return 'SS';
     if (stat >= 160) return 'S';
     if (stat >= 120) return 'A';
     if (stat >= 80) return 'B';
+    return 'C';
+}
+
+// 팀 종합 등급 로직
+function getTeamGrade(stat) {
+    if (stat >= 400) return 'SS';
+    if (stat >= 320) return 'S';
+    if (stat >= 240) return 'A';
+    if (stat >= 160) return 'B';
     return 'C';
 }
 
@@ -306,34 +314,42 @@ function showOverlay(title, sub, type) {
     t.innerText = title; s.innerText = sub; ov.classList.add('show');
 }
 
+// 고정 총량 균등 분배 훈련 로직
 function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
     if (ST.tp < t.cost) return alert("훈련 포인트가 부족합니다!");
 
-    const isGreat = Math.random() < 0.05;
-    const TOTAL_INC = isGreat ? t.totalGreat : t.total;
+    const isGreat = Math.random() < 0.05; // 5% 확률 대성공
     
-    let activeStatsCount = 0;
-    ST.players.forEach(p => {
-        t.stats.forEach(s => { if (p.stats[s] < MAX_STAT) activeStatsCount++; });
-    });
-
-    if (activeStatsCount === 0) return alert(`모든 관련 스탯이 이미 최고치입니다!`);
-
-    const perStatInc = TOTAL_INC / activeStatsCount;
+    // 기획서 기반: 성공 시 1인당 +5, 대성공 시 1인당 +10 기준
+    // 팀 종합 스탯 상승 목표치 = (인당 상승량 * 담당자 2명 * 스탯 종류 수)
+    const baseInc = isGreat ? 10 : 5;
+    const totalTargetIncrease = baseInc * 2 * t.stats.length;
+    
+    let activeNodes = [];
     ST.players.forEach(p => {
         t.stats.forEach(s => {
-            if (p.stats[s] < MAX_STAT) p.stats[s] = Math.min(MAX_STAT, p.stats[s] + perStatInc);
+            // 해당 선수가 담당하는 스탯이고, 아직 MAX(200)가 아닌 노드 추출
+            if (p.target.includes(s) && p.stats[s] < MAX_STAT) {
+                activeNodes.push({ p, s });
+            }
         });
+    });
+
+    if (activeNodes.length === 0) return alert("해당 항목의 모든 스탯이 이미 최고치입니다!");
+
+    // 균등 분배: 총 상승 목표치를 유효 노드 수로 나눔
+    const perNodeInc = totalTargetIncrease / activeNodes.length;
+    activeNodes.forEach(node => {
+        node.p.stats[node.s] = Math.min(MAX_STAT, node.p.stats[node.s] + perNodeInc);
     });
 
     ST.tp -= t.cost;
     render();
 
-    const statText = t.stats.join(', ');
     showOverlay(
         isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", 
-        isGreat ? `훈련 효율 폭발! [${statText}] 총합 +${TOTAL_INC} 상승!` : `무사히 훈련을 마쳤습니다. [${statText}] 총합 +${TOTAL_INC} 상승!`, 
+        isGreat ? `효율 폭발! 팀 전체 스탯 +${totalTargetIncrease} 상승!` : `무사히 마쳤습니다. 팀 전체 스탯 +${totalTargetIncrease} 상승!`, 
         isGreat ? 'great' : 'win'
     );
 }
@@ -361,7 +377,7 @@ function playMatch() {
 function nextDay() {
     if (ST.day >= 70) return alert("시즌 종료");
     ST.day++;
-    ST.tp += DAILY_TP; // 일일 40P 정상 충전
+    ST.tp += DAILY_TP; // 매일 40P 충전
     if (ST.isFailed) { ST.isFailed = false; ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
     else if (ST.isLeagueCleared && ST.leagueIdx < 3) { ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
     render();
@@ -382,7 +398,8 @@ function drawRadar(id, totals) {
         <polygon points="${pts}" fill="rgba(212,173,106,0.3)" stroke="var(--accent)" stroke-width="2"/>
         ${labels.map((k, i) => { 
             const a = (Math.PI * 2 * i / 6) - (Math.PI / 2); 
-            return `<text x="${100 + 92 * Math.cos(a)}" y="${100 + 92 * Math.sin(a)}" fill="#888" font-size="10" text-anchor="middle" dominant-baseline="middle">${k}</text>`; 
+            const grade = getTeamGrade(totals[k]);
+            return `<text x="${100 + 92 * Math.cos(a)}" y="${100 + 92 * Math.sin(a)}" fill="#888" font-size="10" text-anchor="middle" dominant-baseline="middle">${k}[${grade}]</text>`; 
         }).join('')}
     `;
 }
