@@ -42,7 +42,6 @@
         .league-title-main { font-size: 20px; font-weight: 900; color: var(--accent-bright); text-align: center; margin-bottom: 15px; display: block; }
         .card-title-sub { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 15px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
 
-        /* 보상 팝업 스타일 */
         .reward-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(8px); }
         .reward-overlay.show { display: flex; }
         .reward-card { background: linear-gradient(180deg, #1a1d23 0%, #0a0c10 100%); border: 1px solid var(--accent); border-radius: 24px; padding: 40px 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 0 50px rgba(212, 173, 106, 0.2); transform: scale(0.9); transition: 0.3s; }
@@ -54,7 +53,6 @@
         .reward-msg { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
         .reward-close-btn { margin-top: 30px; background: var(--accent); color: #000; border: none; padding: 12px 40px; border-radius: 10px; font-weight: 800; cursor: pointer; }
 
-        /* 기존 스타일 */
         .train-status-bar { display: flex; justify-content: center; gap: 15px; margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 12px; }
         .status-item { text-align: center; }
         .status-label { font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 2px; }
@@ -70,6 +68,7 @@
 
         .btn { width: 100%; padding: 16px; border-radius: 14px; font-weight: 800; border: none; cursor: pointer; font-size: 15px; transition: 0.2s; }
         .btn-primary { background: linear-gradient(135deg, var(--accent), #b89156); color: #000; }
+        .btn-success { background: var(--win); color: #fff; }
         .btn:disabled { background: #222 !important; color: #555 !important; cursor: not-allowed; }
 
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(10px); cursor: pointer; }
@@ -79,7 +78,6 @@
         .win-text { color: var(--win); }
         .lose-text { color: var(--error); }
         .great-text { color: var(--accent-bright); text-shadow: 0 0 30px rgba(245, 200, 66, 0.8); animation: pulse 0.6s infinite alternate; }
-        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
 
         .bracket-wrapper { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 25px 0 10px; }
         .bracket-node { width: 40px; height: 40px; border-radius: 50%; background: #1a1f26; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; color: #555; }
@@ -99,15 +97,10 @@
 
     <div id="rewardOverlay" class="reward-overlay">
         <div class="reward-card">
-            <div class="reward-glow">
-                <div class="reward-icon" id="rewardIcon">🎁</div>
-            </div>
+            <div class="reward-glow"><div class="reward-icon" id="rewardIcon">🎁</div></div>
             <div class="reward-title" id="rewardTitle">보상 획득</div>
             <div class="reward-item-name" id="rewardItemName">아이템 이름</div>
-            <div class="reward-msg" id="rewardMsg">
-                (확률에 의해) 보상을 획득하였습니다.<br>
-                획득한 보상은 소지품으로 지급되었습니다.
-            </div>
+            <div class="reward-msg" id="rewardMsg">보상을 획득하였습니다.</div>
             <button class="reward-close-btn" onclick="closeReward()">확인</button>
         </div>
     </div>
@@ -192,7 +185,12 @@
             </div>
             <div id="clearMsg" class="card" style="display:none; text-align:center; padding:30px 10px;">
                 <div style="font-weight:900; color:var(--win); font-size:22px;">LEAGUE CLEARED!</div>
-                <div style="font-size:13px; color:var(--text-dim); margin-top:10px;">내일 새로운 리그가 시작됩니다.</div>
+                <div style="font-size:13px; color:var(--text-dim); margin:10px 0 20px;">내일 새로운 리그가 시작됩니다.</div>
+                <button class="btn btn-success" id="finalRewardBtn" onclick="receiveFinalReward()">🏆 우승 보상 받기</button>
+            </div>
+            <div id="missingRewardMsg" class="card" style="display:none; text-align:center; background: rgba(255, 77, 77, 0.1); border-color: var(--error);">
+                <div style="font-size:13px; color:var(--error); font-weight:800; margin-bottom:10px;">⚠️ 미수령 우승 보상이 있습니다!</div>
+                <button class="btn btn-primary" onclick="goToMissingLeague()" style="padding:10px; font-size:13px;">보상 받으러 가기</button>
             </div>
         </div>
     </div>
@@ -219,7 +217,6 @@ const TEAMS_DATA = {
     "SSC 볼다이크": { captain: "세헤라데", players: ["마레가", "아이작", "마리우"] }
 };
 
-// 보상 데이터 포함
 const LEAGUES = [
     { name: "1차 예선", M: 480, N: 960, enemies: ["레온하트 네리아", "루테란 성 네리아", "슈테른 네리아", "위대한 성 네리아", "칸다리아 네리아", "칼리나리 네리아", "갈기파도 네리아"], 
       rewards: { win: "경기 승리 상자", lose: "경기 패배 상자", final: "1차 예선 우승 기념 상자" } },
@@ -231,23 +228,13 @@ const LEAGUES = [
       rewards: { win: "경기 승리 상자", lose: "경기 패배 상자", final: "아크라시아 컵 최종 우승 상자" } }
 ];
 
-let ST = { day: 1, tp: DAILY_TP, leagueIdx: 0, round: 1, selectedTeamName: null, players: [], enemy: null, isLeagueCleared: false, isFailed: false, curProb: 0 };
-
-function getPlayerGrade(stat) {
-    if (stat >= 200) return 'SS';
-    if (stat >= 160) return 'S';
-    if (stat >= 120) return 'A';
-    if (stat >= 80) return 'B';
-    return 'C';
-}
-
-function getTeamGrade(stat) {
-    if (stat >= 400) return 'SS';
-    if (stat >= 320) return 'S';
-    if (stat >= 240) return 'A';
-    if (stat >= 160) return 'B';
-    return 'C';
-}
+// ST에 rewardReceivedStatus 추가 (리그별 우승 보상 수령 여부)
+let ST = { 
+    day: 1, tp: DAILY_TP, leagueIdx: 0, round: 1, selectedTeamName: null, 
+    players: [], enemy: null, isLeagueCleared: false, isFailed: false, curProb: 0,
+    rewardReceivedStatus: [false, false, false, false], //
+    viewingLeagueIdx: 0 
+};
 
 function init() {
     const grid = document.getElementById('teamGrid');
@@ -270,6 +257,7 @@ function confirmTeam() {
         stats: {'공격':40,'수비':40,'협력':40,'기술':40,'체력':40,'속도':40} 
     }));
     ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
+    ST.viewingLeagueIdx = ST.leagueIdx;
     document.getElementById('selectionArea').style.display = 'none';
     document.getElementById('mainTabs').style.display = 'grid';
     document.getElementById('teamInfoArea').style.display = 'block';
@@ -286,7 +274,8 @@ function calculateTotals() {
 function render() {
     if (!ST.players.length) return;
     const { totals, S } = calculateTotals();
-    const league = LEAGUES[ST.leagueIdx];
+    const currentLeague = LEAGUES[ST.leagueIdx];
+    const viewLeague = LEAGUES[ST.viewingLeagueIdx];
     
     document.getElementById('dayLabel').innerText = `${ST.day}일차`;
     document.getElementById('weekLabel').innerText = `${Math.floor((ST.day-1)/7)+1}주차`;
@@ -294,18 +283,53 @@ function render() {
     document.getElementById('totalStatsTextProfile').innerText = S;
     document.getElementById('totalStatsTextTrain').innerText = S;
     document.getElementById('myTeamLabel').innerText = ST.selectedTeamName;
-    document.getElementById('enemyTeamLabel').innerText = ST.enemy;
-    document.getElementById('leagueName').innerText = league.name;
+    document.getElementById('enemyTeamLabel').innerText = ST.viewingLeagueIdx === ST.leagueIdx ? ST.enemy : "우승 완료";
+    document.getElementById('leagueName').innerText = viewLeague.name;
+
+    // 대진표 상태 렌더링
+    const progress = document.getElementById('connectorProgress');
+    let progressVal = 0;
+    const isViewLeagueCleared = ST.viewingLeagueIdx < ST.leagueIdx || (ST.viewingLeagueIdx === ST.leagueIdx && ST.isLeagueCleared);
+
+    for(let i=1; i<=4; i++){
+        const node = document.getElementById(`node-${i}`);
+        node.className = 'bracket-node';
+        if (isViewLeagueCleared) {
+            node.classList.add('complete');
+            progressVal = 100;
+        } else if (ST.viewingLeagueIdx === ST.leagueIdx) {
+            if(i < ST.round) { node.classList.add('complete'); progressVal = (i / 3) * 100; }
+            else if(i === ST.round) { node.classList.add('active'); }
+        }
+    }
+    progress.style.width = `${progressVal}%`;
     
+    // 매치 카드 vs 우승 카드 제어
+    const mCard = document.getElementById('matchCard');
+    const cMsg = document.getElementById('clearMsg');
+    const fRewardBtn = document.getElementById('finalRewardBtn');
+    
+    if (isViewLeagueCleared) {
+        mCard.style.display = 'none';
+        cMsg.style.display = 'block';
+        // 보상 수령 여부에 따른 버튼 제어
+        fRewardBtn.style.display = ST.rewardReceivedStatus[ST.viewingLeagueIdx] ? 'none' : 'block';
+    } else {
+        mCard.style.display = 'block';
+        cMsg.style.display = 'none';
+        document.getElementById('matchBtn').disabled = ST.isFailed;
+        document.getElementById('failMsg').style.display = ST.isFailed ? 'block' : 'none';
+    }
+
+    // 미수령 보상 알림 (현재 진행중인 리그가 아닌 곳에 보상이 있을 때)
+    const missingRewardIdx = ST.rewardReceivedStatus.findIndex((received, idx) => !received && idx < ST.leagueIdx);
+    document.getElementById('missingRewardMsg').style.display = (missingRewardIdx !== -1 && ST.viewingLeagueIdx !== missingRewardIdx) ? 'block' : 'none';
+
     const pListUI = document.getElementById('playerListUI');
     pListUI.innerHTML = ST.players.map(p => {
         const statsHtml = p.target.map(s => {
             const grade = getPlayerGrade(p.stats[s]);
-            const isMax = p.stats[s] >= MAX_STAT;
-            return `<div class="p-stat-item ${isMax ? 'max' : ''}">
-                        <span>${s} <small style="font-size:9px; opacity:0.6;">[${grade}]</small></span> 
-                        <b>${Math.floor(p.stats[s])}</b>
-                    </div>`;
+            return `<div class="p-stat-item ${p.stats[s] >= MAX_STAT ? 'max' : ''}"><span>${s} <small>[${grade}]</small></span><b>${Math.floor(p.stats[s])}</b></div>`;
         }).join('');
         return `<div class="player-item"><div class="p-pos">${p.pos}</div><div class="p-name">${p.name}</div><div class="p-stat-grid">${statsHtml}</div></div>`;
     }).join('');
@@ -313,29 +337,28 @@ function render() {
     drawRadar('radarSvgProfile', totals);
     drawRadar('radarSvgTrain', totals);
     
-    const progress = document.getElementById('connectorProgress');
-    let progressVal = 0;
-    for(let i=1; i<=4; i++){
-        const node = document.getElementById(`node-${i}`);
-        node.className = 'bracket-node';
-        if(i < ST.round) { node.classList.add('complete'); progressVal = (i / 3) * 100; }
-        else if(i === ST.round && !ST.isLeagueCleared) { node.classList.add('active'); }
-        if(ST.isLeagueCleared && i === 4) { node.classList.add('complete'); progressVal = 100; }
-    }
-    progress.style.width = `${progressVal}%`;
-    
-    const mCard = document.getElementById('matchCard');
-    const cMsg = document.getElementById('clearMsg');
-    if (ST.isLeagueCleared) { mCard.style.display = 'none'; cMsg.style.display = 'block'; }
-    else { mCard.style.display = 'block'; cMsg.style.display = 'none'; document.getElementById('matchBtn').disabled = ST.isFailed; document.getElementById('failMsg').style.display = ST.isFailed ? 'block' : 'none'; }
-    
     const kr = [0, 1, 1.5, 2][ST.round];
-    ST.curProb = (S < league.M) ? 0 : (S >= league.N) ? 100 : Math.pow((S - league.M) / (league.N - league.M), kr) * 100;
+    ST.curProb = (S < currentLeague.M) ? 0 : (S >= currentLeague.N) ? 100 : Math.pow((S - currentLeague.M) / (currentLeague.N - currentLeague.M), kr) * 100;
 }
 
-// 보상 지급 팝업 노출
-function openReward(type) {
-    const league = LEAGUES[ST.leagueIdx];
+// 우승 보상 수령
+function receiveFinalReward() {
+    ST.rewardReceivedStatus[ST.viewingLeagueIdx] = true;
+    openReward('final', ST.viewingLeagueIdx);
+    render();
+}
+
+// 미수령 리그로 이동
+function goToMissingLeague() {
+    const missingRewardIdx = ST.rewardReceivedStatus.findIndex((received, idx) => !received && idx < ST.leagueIdx);
+    if (missingRewardIdx !== -1) {
+        ST.viewingLeagueIdx = missingRewardIdx;
+        render();
+    }
+}
+
+function openReward(type, leagueIdx = ST.leagueIdx) {
+    const league = LEAGUES[leagueIdx];
     const overlay = document.getElementById('rewardOverlay');
     const icon = document.getElementById('rewardIcon');
     const title = document.getElementById('rewardTitle');
@@ -343,22 +366,15 @@ function openReward(type) {
     const msg = document.getElementById('rewardMsg');
 
     if(type === 'win') {
-        icon.innerText = "🎖️";
-        title.innerText = "라운드 승리 보상";
+        icon.innerText = "🎖️"; title.innerText = "라운드 승리 보상";
         itemName.innerText = league.rewards.win;
-        msg.innerHTML = "승리 보상을 획득하였습니다.<br>획득한 보상은 소지품으로 지급되었습니다.";
     } else if(type === 'lose') {
-        icon.innerText = "💧";
-        title.innerText = "라운드 패배 위로 보상";
+        icon.innerText = "💧"; title.innerText = "라운드 패배 위로 보상";
         itemName.innerText = league.rewards.lose;
-        msg.innerHTML = " 패배 위로 보상을 획득하였습니다.<br>획득한 보상은 소지품으로 지급되었습니다.";
     } else if(type === 'final') {
-        icon.innerText = "🎁";
-        title.innerText = "리그 우승 보상";
+        icon.innerText = "🏆"; title.innerText = "리그 우승 보상";
         itemName.innerText = league.rewards.final;
-        msg.innerHTML = "보상을 획득하였습니다.<br>획득한 보상은 소지품으로 지급되었습니다.";
     }
-
     overlay.classList.add('show');
 }
 
@@ -370,45 +386,8 @@ function showOverlay(title, sub, type) {
     const ov = document.getElementById('resOverlay');
     const t = document.getElementById('resTitle');
     const s = document.getElementById('resSub');
-    t.className = "res-title";
-    if(type === 'win') t.classList.add('win-text');
-    else if(type === 'lose') t.classList.add('lose-text');
-    else if(type === 'great') t.classList.add('great-text');
+    t.className = "res-title " + (type === 'win' ? 'win-text' : type === 'lose' ? 'lose-text' : 'great-text');
     t.innerText = title; s.innerText = sub; ov.classList.add('show');
-}
-
-function doTrain(tid) {
-    const t = TRAINS.find(x => x.id === tid);
-    if (ST.tp < t.cost) return alert("훈련 포인트가 부족합니다!");
-
-    const isGreat = Math.random() < 0.05; 
-    const baseInc = isGreat ? 10 : 5;
-    const totalTargetIncrease = baseInc * 2 * t.stats.length;
-    
-    let activeNodes = [];
-    ST.players.forEach(p => {
-        t.stats.forEach(s => {
-            if (p.target.includes(s) && p.stats[s] < MAX_STAT) {
-                activeNodes.push({ p, s });
-            }
-        });
-    });
-
-    if (activeNodes.length === 0) return alert("해당 항목의 모든 스탯이 이미 최고치입니다!");
-
-    const perNodeInc = totalTargetIncrease / activeNodes.length;
-    activeNodes.forEach(node => {
-        node.p.stats[node.s] = Math.min(MAX_STAT, node.p.stats[node.s] + perNodeInc);
-    });
-
-    ST.tp -= t.cost;
-    render();
-
-    showOverlay(
-        isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", 
-        isGreat ? `효율 폭발! 팀 전체 스탯 +${totalTargetIncrease} 상승!` : `무사히 마쳤습니다. 팀 전체 스탯 +${totalTargetIncrease} 상승!`, 
-        isGreat ? 'great' : 'win'
-    );
 }
 
 function playMatch() {
@@ -419,11 +398,11 @@ function playMatch() {
             if (ST.round < 3) {
                 ST.round++; ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1];
                 showOverlay("MATCH WIN", "승리하여 다음 라운드에 진출했습니다!", "win");
-                setTimeout(() => openReward('win'), 1500); // 경기 결과창 노출 후 보상 팝업
+                setTimeout(() => openReward('win'), 1500);
             } else {
                 ST.isLeagueCleared = true;
-                showOverlay("🏆 CHAMPION 🏆", `${LEAGUES[ST.leagueIdx].name} 정상에 등극했습니다!`, "great");
-                setTimeout(() => openReward('final'), 1500);
+                showOverlay("🏆 CHAMPION 🏆", `${LEAGUES[ST.leagueIdx].name} 우승! 보상을 확인하세요.`, "great");
+                // 우승 시 자동 팝업 대신 버튼 수령 유도
             }
         } else {
             ST.isFailed = true;
@@ -435,12 +414,32 @@ function playMatch() {
 }
 
 function nextDay() {
-    if (ST.day >= 70) return alert("시즌 종료");
     ST.day++;
     ST.tp += DAILY_TP; 
-    if (ST.isFailed) { ST.isFailed = false; ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
-    else if (ST.isLeagueCleared && ST.leagueIdx < 3) { ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
+    if (ST.isFailed) { 
+        ST.isFailed = false; ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; 
+    } else if (ST.isLeagueCleared && ST.leagueIdx < 3) {
+        ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; 
+        ST.enemy = LEAGUES[ST.leagueIdx].enemies[0];
+        ST.viewingLeagueIdx = ST.leagueIdx; // 다음 날이 되면 기본적으로 현재 리그를 보여줌
+    }
     render();
+}
+
+function doTrain(tid) {
+    const t = TRAINS.find(x => x.id === tid);
+    if (ST.tp < t.cost) return alert("포인트 부족!");
+    const isGreat = Math.random() < 0.05; 
+    const baseInc = isGreat ? 10 : 5;
+    const totalTargetIncrease = baseInc * 2 * t.stats.length;
+    let activeNodes = [];
+    ST.players.forEach(p => { t.stats.forEach(s => { if (p.target.includes(s) && p.stats[s] < MAX_STAT) activeNodes.push({ p, s }); }); });
+    if (activeNodes.length === 0) return alert("스탯 최대!");
+    const perNodeInc = totalTargetIncrease / activeNodes.length;
+    activeNodes.forEach(node => node.p.stats[node.s] = Math.min(MAX_STAT, node.p.stats[node.s] + perNodeInc));
+    ST.tp -= t.cost;
+    render();
+    showOverlay(isGreat ? "✨ 대성공 !! ✨" : "훈련 성공", `팀 전체 스탯 +${totalTargetIncrease} 상승!`, isGreat ? 'great' : 'win');
 }
 
 function drawRadar(id, totals) {
@@ -448,30 +447,19 @@ function drawRadar(id, totals) {
     const labels = ['공격','수비','협력','기술','체력','속도'];
     const pts = labels.map((k, i) => {
         const a = (Math.PI * 2 * i / 6) - (Math.PI / 2);
-        const val = Math.min(TEAM_MAX_STAT, totals[k]);
-        const radius = (75 * val / TEAM_MAX_STAT); 
+        const radius = (75 * Math.min(TEAM_MAX_STAT, totals[k]) / TEAM_MAX_STAT); 
         return `${100 + radius * Math.cos(a)},${100 + radius * Math.sin(a)}`;
     }).join(' ');
-
-    svg.innerHTML = `
-        <circle cx="100" cy="100" r="75" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
-        <polygon points="${pts}" fill="rgba(212,173,106,0.3)" stroke="var(--accent)" stroke-width="2"/>
-        ${labels.map((k, i) => { 
-            const a = (Math.PI * 2 * i / 6) - (Math.PI / 2); 
-            const grade = getTeamGrade(totals[k]);
-            return `<text x="${100 + 92 * Math.cos(a)}" y="${100 + 92 * Math.sin(a)}" fill="#888" font-size="10" text-anchor="middle" dominant-baseline="middle">${k}[${grade}]</text>`; 
-        }).join('')}
-    `;
+    svg.innerHTML = `<circle cx="100" cy="100" r="75" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/><polygon points="${pts}" fill="rgba(212,173,106,0.3)" stroke="var(--accent)" stroke-width="2"/>${labels.map((k, i) => { const a = (Math.PI * 2 * i / 6) - (Math.PI / 2); return `<text x="${100 + 92 * Math.cos(a)}" y="${100 + 92 * Math.sin(a)}" fill="#888" font-size="10" text-anchor="middle" dominant-baseline="middle">${k}</text>`; }).join('')}`;
 }
 
+function getPlayerGrade(s){ return s>=200?'SS':s>=160?'S':s>=120?'A':s>=80?'B':'C'; }
+function getTeamGrade(s){ return s>=400?'SS':s>=320?'S':s>=240?'A':s>=160?'B':'C'; }
 function switchTab(id, btn) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(`panel-${id}`).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active')); document.getElementById(`panel-${id}`).classList.add('active');
     render();
 }
-
 window.onload = init;
 </script>
 </body>
