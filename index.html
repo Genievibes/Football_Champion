@@ -42,6 +42,19 @@
         .league-title-main { font-size: 20px; font-weight: 900; color: var(--accent-bright); text-align: center; margin-bottom: 15px; display: block; }
         .card-title-sub { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-bottom: 15px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
 
+        /* 보상 팝업 스타일 */
+        .reward-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(8px); }
+        .reward-overlay.show { display: flex; }
+        .reward-card { background: linear-gradient(180deg, #1a1d23 0%, #0a0c10 100%); border: 1px solid var(--accent); border-radius: 24px; padding: 40px 20px; width: 85%; max-width: 400px; text-align: center; box-shadow: 0 0 50px rgba(212, 173, 106, 0.2); transform: scale(0.9); transition: 0.3s; }
+        .reward-overlay.show .reward-card { transform: scale(1); }
+        .reward-glow { width: 120px; height: 120px; background: radial-gradient(circle, rgba(212, 173, 106, 0.4) 0%, transparent 70%); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .reward-icon { font-size: 60px; filter: drop-shadow(0 0 10px var(--accent)); }
+        .reward-title { font-size: 22px; font-weight: 900; color: var(--accent-bright); margin-bottom: 8px; }
+        .reward-item-name { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 20px; }
+        .reward-msg { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+        .reward-close-btn { margin-top: 30px; background: var(--accent); color: #000; border: none; padding: 12px 40px; border-radius: 10px; font-weight: 800; cursor: pointer; }
+
+        /* 기존 스타일 */
         .train-status-bar { display: flex; justify-content: center; gap: 15px; margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 12px; }
         .status-item { text-align: center; }
         .status-label { font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 2px; }
@@ -82,6 +95,21 @@
     <div id="resOverlay" class="overlay" onclick="this.classList.remove('show')">
         <div id="resTitle" class="res-title"></div>
         <div id="resSub" class="res-sub"></div>
+    </div>
+
+    <div id="rewardOverlay" class="reward-overlay">
+        <div class="reward-card">
+            <div class="reward-glow">
+                <div class="reward-icon" id="rewardIcon">🎁</div>
+            </div>
+            <div class="reward-title" id="rewardTitle">보상 획득</div>
+            <div class="reward-item-name" id="rewardItemName">아이템 이름</div>
+            <div class="reward-msg" id="rewardMsg">
+                (확률에 의해) 보상을 획득하였습니다.<br>
+                획득한 보상은 소지품으로 지급되었습니다.
+            </div>
+            <button class="reward-close-btn" onclick="closeReward()">확인</button>
+        </div>
     </div>
 
     <div id="app">
@@ -170,18 +198,17 @@
     </div>
 
 <script>
-const MAX_STAT = 200; // 개별 선수 MAX
-const TEAM_MAX_STAT = 400; // 팀 종합 MAX (SS등급 기준)
-const DAILY_TP = 40; // 일일 획득 포인트
+const MAX_STAT = 200; 
+const TEAM_MAX_STAT = 400; 
+const DAILY_TP = 40; 
 
-// 기획서 기반 훈련 데이터 정의
 const TRAINS = [
-    { id:'t1', name:"셔틀런", cost:20, stats:['체력','속도'] },
-    { id:'t2', name:"슈팅 연습", cost:20, stats:['공격','기술'] },
-    { id:'t3', name:"전술 훈련", cost:20, stats:['수비','협력'] },
-    { id:'t4', name:"미니 게임", cost:30, stats:['공격','협력','기술'] },
-    { id:'t5', name:"담력 훈련", cost:30, stats:['수비','체력','속도'] },
-    { id:'t6', name:"해외 전지훈련", cost:60, stats:['공격','수비','협력','기술','체력','속도'] }
+    { id:'t1', name:"체력 훈련", cost:20, stats:['체력','속도'] },
+    { id:'t2', name:"전술 훈련", cost:20, stats:['공격','기술'] },
+    { id:'t3', name:"슈팅 훈련", cost:20, stats:['수비','협력'] },
+    { id:'t4', name:"단체 명상", cost:30, stats:['공격','협력','기술'] },
+    { id:'t5', name:"비디오 분석", cost:30, stats:['수비','체력','속도'] },
+    { id:'t6', name:"전문 코치 초청 강의", cost:60, stats:['공격','수비','협력','기술','체력','속도'] }
 ];
 
 const TEAMS_DATA = {
@@ -192,16 +219,20 @@ const TEAMS_DATA = {
     "SSC 볼다이크": { captain: "세헤라데", players: ["마레가", "아이작", "마리우"] }
 };
 
+// 보상 데이터 포함
 const LEAGUES = [
-    { name: "1차 예선", M: 480, N: 960, enemies: ["레온하트 네리아", "루테란 성 네리아", "슈테른 네리아", "위대한 성 네리아", "칸다리아 네리아", "칼리나리 네리아", "갈기파도 네리아"] },
-    { name: "2차 예선", M: 960, N: 1440, enemies: ["판다 푸푸", "샐리", "다람쥐 욤", "나루니", "코니", "토토이끼", "파파"] },
-    { name: "3차 예선", M: 1440, N: 1920, enemies: ["발탄", "비아키스", "쿠크세이튼", "에키드나", "아브렐슈드", "일리아칸", "카멘"] },
-    { name: "아크라시아 컵", M: 2200, N: 2400, enemies: ["니나브", "카단", "웨이", "바훈투르", "아제나&이난나", "샨디", "실리안"] }
+    { name: "1차 예선", M: 480, N: 960, enemies: ["레온하트 네리아", "루테란 성 네리아", "슈테른 네리아", "위대한 성 네리아", "칸다리아 네리아", "칼리나리 네리아", "갈기파도 네리아"], 
+      rewards: { win: "경기 승리 상자", lose: "경기 패배 상자", final: "1차 예선 우승 기념 상자" } },
+    { name: "2차 예선", M: 960, N: 1440, enemies: ["판다 푸푸", "샐리", "다람쥐 욤", "나루니", "코니", "토토이끼", "파파"],
+      rewards: { win: "경기 승리 상자", lose: "경기 패배 상자", final: "2차 예선 우승 기념 상자" } },
+    { name: "3차 예선", M: 1440, N: 1920, enemies: ["발탄", "비아키스", "쿠크세이튼", "에키드나", "아브렐슈드", "일리아칸", "카멘"],
+      rewards: { win: "경기 승리 상자", lose: "경기 패배 상자", final: "3차 예선 우승 기념 상자" } },
+    { name: "아크라시아 컵", M: 2200, N: 2400, enemies: ["니나브", "카단", "웨이", "바훈투르", "아제나&이난나", "샨디", "실리안"],
+      rewards: { win: "경기 승리 상자", lose: "경기 패배 상자", final: "아크라시아 컵 최종 우승 상자" } }
 ];
 
 let ST = { day: 1, tp: DAILY_TP, leagueIdx: 0, round: 1, selectedTeamName: null, players: [], enemy: null, isLeagueCleared: false, isFailed: false, curProb: 0 };
 
-// 개별 선수 등급 로직
 function getPlayerGrade(stat) {
     if (stat >= 200) return 'SS';
     if (stat >= 160) return 'S';
@@ -210,7 +241,6 @@ function getPlayerGrade(stat) {
     return 'C';
 }
 
-// 팀 종합 등급 로직
 function getTeamGrade(stat) {
     if (stat >= 400) return 'SS';
     if (stat >= 320) return 'S';
@@ -303,6 +333,39 @@ function render() {
     ST.curProb = (S < league.M) ? 0 : (S >= league.N) ? 100 : Math.pow((S - league.M) / (league.N - league.M), kr) * 100;
 }
 
+// 보상 지급 팝업 노출
+function openReward(type) {
+    const league = LEAGUES[ST.leagueIdx];
+    const overlay = document.getElementById('rewardOverlay');
+    const icon = document.getElementById('rewardIcon');
+    const title = document.getElementById('rewardTitle');
+    const itemName = document.getElementById('rewardItemName');
+    const msg = document.getElementById('rewardMsg');
+
+    if(type === 'win') {
+        icon.innerText = "🎖️";
+        title.innerText = "라운드 승리 보상";
+        itemName.innerText = league.rewards.win;
+        msg.innerHTML = "승리 보상을 획득하였습니다.<br>획득한 보상은 소지품으로 지급되었습니다.";
+    } else if(type === 'lose') {
+        icon.innerText = "💧";
+        title.innerText = "라운드 패배 위로 보상";
+        itemName.innerText = league.rewards.lose;
+        msg.innerHTML = " 패배 위로 보상을 획득하였습니다.<br>획득한 보상은 소지품으로 지급되었습니다.";
+    } else if(type === 'final') {
+        icon.innerText = "🎁";
+        title.innerText = "리그 우승 보상";
+        itemName.innerText = league.rewards.final;
+        msg.innerHTML = "보상을 획득하였습니다.<br>획득한 보상은 소지품으로 지급되었습니다.";
+    }
+
+    overlay.classList.add('show');
+}
+
+function closeReward() {
+    document.getElementById('rewardOverlay').classList.remove('show');
+}
+
 function showOverlay(title, sub, type) {
     const ov = document.getElementById('resOverlay');
     const t = document.getElementById('resTitle');
@@ -314,22 +377,17 @@ function showOverlay(title, sub, type) {
     t.innerText = title; s.innerText = sub; ov.classList.add('show');
 }
 
-// 고정 총량 균등 분배 훈련 로직
 function doTrain(tid) {
     const t = TRAINS.find(x => x.id === tid);
     if (ST.tp < t.cost) return alert("훈련 포인트가 부족합니다!");
 
-    const isGreat = Math.random() < 0.05; // 5% 확률 대성공
-    
-    // 기획서 기반: 성공 시 1인당 +5, 대성공 시 1인당 +10 기준
-    // 팀 종합 스탯 상승 목표치 = (인당 상승량 * 담당자 2명 * 스탯 종류 수)
+    const isGreat = Math.random() < 0.05; 
     const baseInc = isGreat ? 10 : 5;
     const totalTargetIncrease = baseInc * 2 * t.stats.length;
     
     let activeNodes = [];
     ST.players.forEach(p => {
         t.stats.forEach(s => {
-            // 해당 선수가 담당하는 스탯이고, 아직 MAX(200)가 아닌 노드 추출
             if (p.target.includes(s) && p.stats[s] < MAX_STAT) {
                 activeNodes.push({ p, s });
             }
@@ -338,7 +396,6 @@ function doTrain(tid) {
 
     if (activeNodes.length === 0) return alert("해당 항목의 모든 스탯이 이미 최고치입니다!");
 
-    // 균등 분배: 총 상승 목표치를 유효 노드 수로 나눔
     const perNodeInc = totalTargetIncrease / activeNodes.length;
     activeNodes.forEach(node => {
         node.p.stats[node.s] = Math.min(MAX_STAT, node.p.stats[node.s] + perNodeInc);
@@ -362,13 +419,16 @@ function playMatch() {
             if (ST.round < 3) {
                 ST.round++; ST.enemy = LEAGUES[ST.leagueIdx].enemies[ST.round-1];
                 showOverlay("MATCH WIN", "승리하여 다음 라운드에 진출했습니다!", "win");
+                setTimeout(() => openReward('win'), 1500); // 경기 결과창 노출 후 보상 팝업
             } else {
                 ST.isLeagueCleared = true;
                 showOverlay("🏆 CHAMPION 🏆", `${LEAGUES[ST.leagueIdx].name} 정상에 등극했습니다!`, "great");
+                setTimeout(() => openReward('final'), 1500);
             }
         } else {
             ST.isFailed = true;
             showOverlay("MATCH LOSS", "아쉽게 패배했습니다. 전력을 보강하세요.", "lose");
+            setTimeout(() => openReward('lose'), 1500);
         }
         render();
     }, 600);
@@ -377,7 +437,7 @@ function playMatch() {
 function nextDay() {
     if (ST.day >= 70) return alert("시즌 종료");
     ST.day++;
-    ST.tp += DAILY_TP; // 매일 40P 충전
+    ST.tp += DAILY_TP; 
     if (ST.isFailed) { ST.isFailed = false; ST.round = 1; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
     else if (ST.isLeagueCleared && ST.leagueIdx < 3) { ST.leagueIdx++; ST.round = 1; ST.isLeagueCleared = false; ST.enemy = LEAGUES[ST.leagueIdx].enemies[0]; }
     render();
